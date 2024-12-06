@@ -1,7 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
 
-function generateDirectoryTree(dirPath: string) {
+function generateDirectoryTree(dirPath: string, parents: Array<string> = []) {
   const tree: any = {}
 
   const items = fs.readdirSync(dirPath)
@@ -13,7 +13,16 @@ function generateDirectoryTree(dirPath: string) {
     const stats = fs.statSync(fullPath)
 
     if (stats.isDirectory()) {
-      tree[item] = generateDirectoryTree(fullPath)
+      tree[item] = {}
+
+      if (parents.length > 0) {
+        tree[item]["_parents"] = parents
+      }
+
+      tree[item] = {
+        ...tree[item],
+        ...generateDirectoryTree(fullPath, [...parents, item]),
+      }
 
       const schemaPathTS = path.join(fullPath, "schema.ts")
 
@@ -36,21 +45,39 @@ function generateDirectoryTree(dirPath: string) {
   return tree
 }
 
+function createGetCollectionRef(parents: Array<string>, indent: string) {
+  const argsPath = parents.slice(0, -1)
+  const args = argsPath.map(p => `${p}Id: string`).join(", ")
+
+  const pathParts = []
+  for (let i = 0; i < argsPath.length; i++) {
+    pathParts.push(parents[i])
+    pathParts.push(`\${args.${argsPath[i]}Id}`)
+  }
+  pathParts.push(parents[parents.length - 1])
+  const path = pathParts.join("/")
+
+  return `${indent}  getCollectionRef: (${
+    argsPath.length > 0 ? `args: {${args}}` : ""
+  }) => {
+    const path = \`${path}\`
+    return path
+  },`
+}
+
 function generateTypeScriptObject(
   tree: any,
   indent: string = "",
-  parentPath: string[] = []
+  parents: Array<string> = []
 ): string {
   const lines: string[] = ["{"]
 
-  if (parentPath.length > 0) {
-    const argsPath = parentPath.slice(0, -1)
-    const args = argsPath.map(p => `${p}Id: string`).join(", ")
-    lines.push(
-      `${indent}  getCollectionRef: (${
-        argsPath.length > 0 ? `args: {${args}}` : ""
-      }) => string,`
-    )
+  if (
+    parents.length > 0 &&
+    !parents.includes("_doc") &&
+    !parents.includes("_parents")
+  ) {
+    lines.push(createGetCollectionRef(parents, indent))
   }
 
   for (const [key, value] of Object.entries(tree)) {
@@ -60,12 +87,14 @@ function generateTypeScriptObject(
       lines.push(`${indent}  ${safeKey}: null,`)
     } else if (key === "_doc") {
       lines.push(`${indent}  ${safeKey}: ${value},`)
+    } else if (key === "_parents") {
+      lines.push(`${indent}  ${safeKey}: ${JSON.stringify(value)},`)
     } else {
       lines.push(
         `${indent}  ${safeKey}: ${generateTypeScriptObject(
           value,
           indent + "  ",
-          [...parentPath, safeKey]
+          [...parents, safeKey]
         )}`
       )
     }
