@@ -1,6 +1,6 @@
 {
   "name": "firetype",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Typesafe ODM for Firestore",
   "main": "dist/firetype.js",
   "types": "dist/firetype.d.ts",

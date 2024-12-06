@@ -71,7 +71,7 @@ function findFiretypeFolder(startPath: string): string | null {
 }
 
 async function generate(options: CliOptions) {
-  console.log("🔥 Generating Firetype schemas...")
+  console.log("🪵💥 Generating Firetype schemas...")
   if (options.mode) {
     console.log(`Generating ${options.mode} types only`)
   }
@@ -94,7 +94,7 @@ async function generate(options: CliOptions) {
       outputPath,
       options.mode
     )
-    console.log(`✅ Generated Firetype schema at: ${generatedPath}`)
+    console.log(`🔥🔥🔥🔥 Generated Firetype schema at: ${generatedPath}`)
   } catch (error) {
     console.error("Failed to generate schema:", error)
     throw error
