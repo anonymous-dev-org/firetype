@@ -106,9 +106,9 @@ function generateTypeScriptObject(
 
 // Example usage:
 const tree = generateDirectoryTree("./firetype")
-const tsObject = `import { z } from "zod";\n\nconst firetype = ${generateTypeScriptObject(
+const tsObject = `import { z } from "zod";\nimport { Firestore } from "firebase-admin/firestore";\nexport function createFireType(firestoreInstance: Firestore) {\n  return ${generateTypeScriptObject(
   tree
-)} as const;\n\nexport { firetype }`
+)} }`
 fs.writeFileSync("firetype.ts", tsObject)
 
 export { generateDirectoryTree }
