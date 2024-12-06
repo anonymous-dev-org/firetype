@@ -6,3 +6,11 @@ tsconfig.json
 tsup.config.ts
 .gitignore 
 src/utils/fs-structure.ts 
+./package-lock.json
+./yarn.lock
+./tsconfig.json
+./tsup.config.ts
+./tsconfig.json
+./tsup.config.ts
+firetype.ts
+.changeset/
