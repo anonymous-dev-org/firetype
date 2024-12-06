@@ -26,9 +26,20 @@ function generateDirectoryTree(dirPath: string): DirectoryTree {
 
 function generateTypeScriptObject(
   tree: DirectoryTree,
-  indent: string = ""
+  indent: string = "",
+  parentPath: string[] = []
 ): string {
   const lines: string[] = ["{"]
+
+  if (parentPath.length > 0) {
+    const argsPath = parentPath.slice(0, -1)
+    const args = argsPath.map(p => `${p}: string`).join(", ")
+    lines.push(
+      `${indent}  getCollectionRef: (${
+        argsPath.length > 0 ? `args: {${args}}` : ""
+      }) => string,`
+    )
+  }
 
   for (const [key, value] of Object.entries(tree)) {
     const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : `"${key}"`
@@ -39,7 +50,8 @@ function generateTypeScriptObject(
       lines.push(
         `${indent}  ${safeKey}: ${generateTypeScriptObject(
           value,
-          indent + "  "
+          indent + "  ",
+          [...parentPath, safeKey]
         )}`
       )
     }
@@ -53,7 +65,7 @@ function generateTypeScriptObject(
 const tree = generateDirectoryTree("./firetype")
 const tsObject = `const firetype = ${generateTypeScriptObject(
   tree
-)}\n\nexport { firetype }`
+)} as const;\n\nexport { firetype }`
 fs.writeFileSync("firetype.ts", tsObject)
 
 export { generateDirectoryTree, DirectoryTree }
