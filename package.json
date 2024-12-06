@@ -2,7 +2,8 @@
   "name": "firetype",
   "version": "0.0.1",
   "description": "Typesafe ODM for Firestore",
-  "main": "index.js",
+  "main": "dist/firetype.js",
+  "types": "dist/firetype.d.ts",
   "author": "Anonymous.dev",
   "license": "MIT",
   "private": false,
@@ -10,13 +11,16 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
-    "firebase": "^11.0.2",
-    "firebase-admin": "^13.0.1",
-    "fs-extra": "^11.2.0",
     "zod": "^3.x.x"
   },
   "devDependencies": {
+    "firebase": "^11.0.2",
+    "firebase-admin": "^13.0.1",
     "@changesets/cli": "^2.27.10",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.1",
@@ -26,10 +30,11 @@
   },
   "scripts": {
     "build": "tsup",
-    "generate": "yarn build &&node dist/index.js",
+    "dev": "tsup --watch",
+    "generate": "yarn build && node dist/cli.js",
     "prepublishOnly": "npm run build"
   },
   "bin": {
-    "firetype": "dist/index.js"
+    "firetype": "dist/cli.js"
   }
 }

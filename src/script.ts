@@ -1,7 +1,10 @@
 import * as fs from "fs"
 import * as path from "path"
 
-function generateDirectoryTree(dirPath: string, parents: Array<string> = []) {
+export function generateDirectoryTree(
+  dirPath: string,
+  parents: Array<string> = []
+) {
   const tree: any = {}
 
   const items = fs.readdirSync(dirPath)
@@ -45,6 +48,57 @@ function generateDirectoryTree(dirPath: string, parents: Array<string> = []) {
   return tree
 }
 
+function createDocumentRef(
+  parents: Array<string>,
+  indent: string,
+  isAdmin: boolean
+) {
+  const argsPath = parents.slice(0, -1)
+  const args = argsPath.map(p => `${p}Id: string`).join(", ")
+
+  return isAdmin
+    ? `${indent}  getDocumentRef: (${
+        argsPath.length > 0
+          ? `args: {${args}}, documentId: string, validate: boolean = false`
+          : "documentId: string, validate: boolean = false"
+      }): AdminDocumentReference<z.infer<typeof this._doc>> => {
+      ${
+        argsPath.length > 0
+          ? `const collectionRef = this.getCollectionRef(args, validate)`
+          : `const collectionRef = this.getCollectionRef(validate)`
+      }
+      return collectionRef.doc(documentId)
+    },`
+    : `${indent}  getDocumentRef: (${
+        argsPath.length > 0
+          ? `args: {${args}}, documentId: string, validate: boolean = false`
+          : "documentId: string, validate: boolean = false"
+      }): ClientDocumentReference<z.infer<typeof this._doc>> => {
+      ${
+        argsPath.length > 0
+          ? `const collectionRef = this.getCollectionRef(args, validate)`
+          : `const collectionRef = this.getCollectionRef(validate)`
+      }
+      return clientDocument(collectionRef, documentId)
+    },`
+}
+
+function createCollectionGroupRef(
+  currentCollection: string,
+  indent: string,
+  isAdmin: boolean
+) {
+  return isAdmin
+    ? `${indent}  getCollectionGroupRef: (validate: boolean = false): AdminCollectionGroup<z.infer<typeof this._doc>> => {
+    const path = \`${currentCollection}\`
+    return firestoreInstance.collectionGroup(path).withConverter(this._converter(validate))
+  },`
+    : `${indent}  getCollectionGroupRef: (validate: boolean = false): ClientQuery<z.infer<typeof this._doc>> => {
+    const path = \`${currentCollection}\`
+    return clientCollectionGroup(firestoreInstance, path).withConverter(this._converter(validate))
+  },`
+}
+
 function createGetCollectionRef(
   parents: Array<string>,
   indent: string,
@@ -64,17 +118,17 @@ function createGetCollectionRef(
   return isAdmin
     ? `${indent}  getCollectionRef: (${
         argsPath.length > 0
-          ? `args: {${args}}, validate: boolean`
-          : "validate: boolean"
+          ? `args: {${args}}, validate: boolean = false`
+          : "validate: boolean = false"
       }): AdminCollectionReference<z.infer<typeof this._doc>> => {
     const path = \`${path}\`
     return firestoreInstance.collection(path).withConverter(this._converter(validate))
   },`
     : `${indent}  getCollectionRef: (${
         argsPath.length > 0
-          ? `args: {${args}}, validate: boolean`
-          : "validate: boolean"
-      }): ClientCollectionReference<z.infer<typeof this._doc>> => {
+          ? `args: {${args}}, validate: boolean = false`
+          : "validate: boolean = false"
+      }): ClientQuery<z.infer<typeof this._doc>> => {
     const path = \`${path}\`
     return clientCollection(firestoreInstance, path).withConverter(this._converter(validate))
   },`
@@ -111,7 +165,7 @@ function generateConverter(indent: string, isAdmin: boolean) {
   }),`
 }
 
-function generateTypeScriptObject(
+export function generateTypeScriptObject(
   tree: any,
   indent: string = "",
   parents: Array<string> = [],
@@ -126,6 +180,10 @@ function generateTypeScriptObject(
     !parents.includes("_converter")
   ) {
     lines.push(createGetCollectionRef(parents, indent, isAdmin))
+    lines.push(
+      createCollectionGroupRef(parents[parents.length - 1], indent, isAdmin)
+    )
+    lines.push(createDocumentRef(parents, indent, isAdmin))
   }
 
   if (tree._doc) {
@@ -158,33 +216,3 @@ function generateTypeScriptObject(
   lines.push(`${indent}}${indent === "" ? "" : ","}`)
   return lines.join("\n")
 }
-
-// Example usage:
-const tree = generateDirectoryTree("./firetype")
-const tsObject = `import { z } from "zod";
-import { 
-  Firestore as AdminFirestore, 
-  DocumentData as AdminDocumentData, 
-  QueryDocumentSnapshot as AdminQueryDocumentSnapshot,
-  CollectionReference as AdminCollectionReference 
-} from "firebase-admin/firestore";
-import { 
-  Firestore as ClientFirestore, 
-  SnapshotOptions as ClientSnapshotOptions, 
-  QueryDocumentSnapshot as ClientQueryDocumentSnapshot, 
-  DocumentData as ClientDocumentData,
-  CollectionReference as ClientCollectionReference,
-  collection as clientCollection 
-} from "firebase/firestore";
-
-export function createFireTypeAdmin(firestoreInstance: AdminFirestore) {
-  return ${generateTypeScriptObject(tree, "", [], true)}
-}
-
-export function createFireTypeClient(firestoreInstance: ClientFirestore) {
-  return ${generateTypeScriptObject(tree, "", [], false)}
-}`
-
-fs.writeFileSync("firetype.ts", tsObject)
-
-generateDirectoryTree(path.join(process.cwd(), "firetype"))
