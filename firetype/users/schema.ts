@@ -1,5 +1,5 @@
 import { z } from "zod"
 
-export const usersSchema = z.object({
+export const schema = z.object({
   userId: z.string(),
 })

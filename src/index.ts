@@ -1,21 +1,33 @@
 import * as fs from "fs"
 import * as path from "path"
 
-interface DirectoryTree {
-  [key: string]: DirectoryTree | null
-}
-
-function generateDirectoryTree(dirPath: string): DirectoryTree {
-  const tree: DirectoryTree = {}
+function generateDirectoryTree(dirPath: string) {
+  const tree: any = {}
 
   const items = fs.readdirSync(dirPath)
 
   for (const item of items) {
+    if (item === "schema.ts") continue
+
     const fullPath = path.join(dirPath, item)
     const stats = fs.statSync(fullPath)
 
     if (stats.isDirectory()) {
       tree[item] = generateDirectoryTree(fullPath)
+
+      const schemaPathTS = path.join(fullPath, "schema.ts")
+
+      if (fs.existsSync(schemaPathTS)) {
+        try {
+          const content = fs.readFileSync(schemaPathTS, "utf-8")
+          const schemaMatch = content.match(/z\.object\(\{([^}]+)\}\)/)
+          if (schemaMatch && tree[item] && typeof tree[item] === "object") {
+            tree[item]["_doc"] = `z.object({${schemaMatch[1]}})`
+          }
+        } catch (error) {
+          console.warn(`Failed to read schema from ${schemaPathTS}:`, error)
+        }
+      }
     } else {
       tree[item] = null
     }
@@ -25,7 +37,7 @@ function generateDirectoryTree(dirPath: string): DirectoryTree {
 }
 
 function generateTypeScriptObject(
-  tree: DirectoryTree,
+  tree: any,
   indent: string = "",
   parentPath: string[] = []
 ): string {
@@ -33,7 +45,7 @@ function generateTypeScriptObject(
 
   if (parentPath.length > 0) {
     const argsPath = parentPath.slice(0, -1)
-    const args = argsPath.map(p => `${p}: string`).join(", ")
+    const args = argsPath.map(p => `${p}Id: string`).join(", ")
     lines.push(
       `${indent}  getCollectionRef: (${
         argsPath.length > 0 ? `args: {${args}}` : ""
@@ -46,6 +58,8 @@ function generateTypeScriptObject(
 
     if (value === null) {
       lines.push(`${indent}  ${safeKey}: null,`)
+    } else if (key === "_doc") {
+      lines.push(`${indent}  ${safeKey}: ${value},`)
     } else {
       lines.push(
         `${indent}  ${safeKey}: ${generateTypeScriptObject(
@@ -63,9 +77,9 @@ function generateTypeScriptObject(
 
 // Example usage:
 const tree = generateDirectoryTree("./firetype")
-const tsObject = `const firetype = ${generateTypeScriptObject(
+const tsObject = `import { z } from "zod";\n\nconst firetype = ${generateTypeScriptObject(
   tree
 )} as const;\n\nexport { firetype }`
 fs.writeFileSync("firetype.ts", tsObject)
 
-export { generateDirectoryTree, DirectoryTree }
+export { generateDirectoryTree }
