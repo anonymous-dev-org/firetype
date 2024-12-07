@@ -72,8 +72,13 @@ function findFiretypeFolder(startPath: string): string | null {
 
 async function generate(options: CliOptions) {
   console.log("🪵💥 Generating Firetype schemas...")
+
+  let modes: Mode[]
   if (options.mode) {
+    modes = [options.mode]
     console.log(`Generating ${options.mode} types only`)
+  } else {
+    modes = ["admin", "client"]
   }
 
   try {
@@ -89,21 +94,12 @@ async function generate(options: CliOptions) {
       )
     }
 
-    const generatedPath = generateFiretypeFile(
-      firetypePath,
-      outputPath,
-      options.mode
-    )
+    const generatedPath = generateFiretypeFile(firetypePath, modes, outputPath)
     console.log(`🔥🔥🔥🔥 Generated Firetype schema at: ${generatedPath}`)
   } catch (error) {
     console.error("Failed to generate schema:", error)
     throw error
   }
-}
-
-async function init(options: CliOptions) {
-  console.log("🚀 Initializing new Firetype project...")
-  // Add initialization logic here
 }
 
 function showHelp() {
@@ -143,9 +139,6 @@ async function main() {
     switch (command) {
       case "generate":
         await generate(options)
-        break
-      case "init":
-        await init(options)
         break
       case "help":
         showHelp()

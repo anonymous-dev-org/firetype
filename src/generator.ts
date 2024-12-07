@@ -1,12 +1,19 @@
 import * as fs from "fs"
 import * as path from "path"
-import { generateDirectoryTree, generateTypeScriptObject } from "./script"
+import {
+  createImportStatements,
+  generateCreationFunction,
+  generateConvertersTree,
+  generateFileSystemTree,
+  generateSchemaTree,
+} from "./script"
 
 export function generateFiretypeFile(
   firetypePath: string,
-  outputPath?: string,
-  mode?: "admin" | "client"
-): string {
+  modes: Array<"admin" | "client">,
+  outputPath?: string
+) {
+  let generatedFile = ""
   // Read the first directory in the firetype folder
   const firstDir = fs
     .readdirSync(firetypePath)
@@ -17,49 +24,27 @@ export function generateFiretypeFile(
     throw new Error("No directories found in the firetype folder")
   }
 
+  generatedFile += createImportStatements(modes)
+
+  const firstDirName = path.basename(firstDir)
+
+  const tree = generateFileSystemTree(firstDir)
   // Generate tree starting from the first directory
-  const tree = generateDirectoryTree(firstDir)
+  const treeSchema = generateSchemaTree(tree)
+  const schemaName = `${firstDirName}Schema`
+  const treeSchemaString = `const ${schemaName} = ${treeSchema}`
 
-  let tsObject = `import { z } from "zod";\n`
+  generatedFile += treeSchemaString
 
-  // Add imports based on mode
-  if (!mode || mode === "admin") {
-    tsObject += `import { 
-  Firestore as AdminFirestore, 
-  DocumentData as AdminDocumentData, 
-  QueryDocumentSnapshot as AdminQueryDocumentSnapshot,
-  CollectionReference as AdminCollectionReference,
-  CollectionGroup as AdminCollectionGroup,
-  DocumentReference as AdminDocumentReference,
-} from "firebase-admin/firestore";\n`
-  }
+  const convertersTree = generateConvertersTree(schemaName, tree, modes)
 
-  if (!mode || mode === "client") {
-    tsObject += `import { 
-  Firestore as ClientFirestore, 
-  SnapshotOptions as ClientSnapshotOptions, 
-  QueryDocumentSnapshot as ClientQueryDocumentSnapshot, 
-  DocumentData as ClientDocumentData,
-  collectionGroup as clientCollectionGroup,
-  Query as ClientQuery,
-  DocumentReference as ClientDocumentReference,
-  collection as clientCollection,
-  doc as clientDocument,
-} from "firebase/firestore";\n\n`
-  }
+  const converterName = `${firstDirName}Converters`
 
-  // Add type definitions based on mode
-  if (!mode || mode === "admin") {
-    tsObject += `export function createFireTypeAdmin(firestoreInstance: AdminFirestore) {
-  return ${generateTypeScriptObject(tree, "", [], true)}
-}\n\n`
-  }
+  generatedFile += `\n\nconst ${converterName} = ${convertersTree}`
 
-  if (!mode || mode === "client") {
-    tsObject += `export function createFireTypeClient(firestoreInstance: ClientFirestore) {
-  return ${generateTypeScriptObject(tree, "", [], false)}
-}`
-  }
+  generatedFile += `\n\n${generateCreationFunction(tree, "admin")}`
+
+  generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
 
   // Use the firetype directory as the target location if no outputPath is provided
   const targetPath = outputPath || path.join(firetypePath, "firetype.ts")
@@ -70,6 +55,6 @@ export function generateFiretypeFile(
     fs.mkdirSync(targetDir, { recursive: true })
   }
 
-  fs.writeFileSync(targetPath, tsObject)
+  fs.writeFileSync(targetPath, generatedFile)
   return targetPath
 }

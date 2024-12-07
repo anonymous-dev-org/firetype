@@ -1,218 +1,370 @@
 import * as fs from "fs"
 import * as path from "path"
 
-export function generateDirectoryTree(
+export function createImportStatements(modes: Array<"admin" | "client">) {
+  let importStatements = `import { z } from "zod";\n`
+
+  // Add imports based on mode
+  if (modes.includes("admin")) {
+    importStatements += `import {
+  Firestore as AdminFirestore,
+  DocumentData as AdminDocumentData,
+  QueryDocumentSnapshot as AdminQueryDocumentSnapshot,
+  CollectionReference as AdminCollectionReference,
+  CollectionGroup as AdminCollectionGroup,
+  DocumentReference as AdminDocumentReference,
+} from "firebase-admin/firestore";\n`
+  }
+
+  if (modes.includes("client")) {
+    importStatements += `import {
+  Firestore as ClientFirestore,
+  SnapshotOptions as ClientSnapshotOptions,
+  QueryDocumentSnapshot as ClientQueryDocumentSnapshot,
+  DocumentData as ClientDocumentData,
+  collectionGroup as clientCollectionGroup,
+  Query as ClientQuery,
+  DocumentReference as ClientDocumentReference,
+  collection as clientCollection,
+  doc as clientDocument,
+} from "firebase/firestore";\n\n`
+  }
+
+  return importStatements
+}
+
+export function generateFileSystemTree(
   dirPath: string,
   parents: Array<string> = []
 ) {
-  const tree: any = {}
-
+  const tree: Record<string, any> = {}
   const items = fs.readdirSync(dirPath)
 
   for (const item of items) {
-    if (item === "schema.ts") continue
-
     const fullPath = path.join(dirPath, item)
     const stats = fs.statSync(fullPath)
 
     if (stats.isDirectory()) {
-      tree[item] = {}
-
-      if (parents.length > 0) {
-        tree[item]["_parents"] = parents
-      }
-
-      tree[item] = {
-        ...tree[item],
-        ...generateDirectoryTree(fullPath, [...parents, item]),
-      }
-
-      const schemaPathTS = path.join(fullPath, "schema.ts")
-
-      if (fs.existsSync(schemaPathTS)) {
-        try {
-          const content = fs.readFileSync(schemaPathTS, "utf-8")
-          const schemaMatch = content.match(/z\.object\(\{([^}]+)\}\)/)
-          if (schemaMatch && tree[item] && typeof tree[item] === "object") {
-            tree[item]["_doc"] = `z.object({${schemaMatch[1]}})`
-          }
-        } catch (error) {
-          console.warn(`Failed to read schema from ${schemaPathTS}:`, error)
+      tree[item] = generateFileSystemTree(fullPath, [...parents, item])
+    } else if (stats.isFile() && item === "schema.ts") {
+      try {
+        const content = fs.readFileSync(fullPath, "utf-8")
+        const schemaMatch = content.match(/z\.object\(\{([^}]+)\}\)/)
+        if (schemaMatch) {
+          tree._schema = schemaMatch[1]
         }
+      } catch (error) {
+        console.warn(`Failed to read schema from ${fullPath}:`, error)
       }
-    } else {
-      tree[item] = null
     }
   }
 
   return tree
 }
 
-function createDocumentRef(
-  parents: Array<string>,
-  indent: string,
-  isAdmin: boolean
-) {
-  const argsPath = parents.slice(0, -1)
-  const args = argsPath.map(p => `${p}Id: string`).join(", ")
+export function generateSchemaTree(systemTree: Record<string, any>): string {
+  let schemaStr = "{"
 
-  return isAdmin
-    ? `${indent}  getDocumentRef: (${
-        argsPath.length > 0
-          ? `args: {${args}}, documentId: string, validate: boolean = false`
-          : "documentId: string, validate: boolean = false"
-      }): AdminDocumentReference<z.infer<typeof this._doc>> => {
-      ${
-        argsPath.length > 0
-          ? `const collectionRef = this.getCollectionRef(args, validate)`
-          : `const collectionRef = this.getCollectionRef(validate)`
-      }
-      return collectionRef.doc(documentId)
-    },`
-    : `${indent}  getDocumentRef: (${
-        argsPath.length > 0
-          ? `args: {${args}}, documentId: string, validate: boolean = false`
-          : "documentId: string, validate: boolean = false"
-      }): ClientDocumentReference<z.infer<typeof this._doc>> => {
-      ${
-        argsPath.length > 0
-          ? `const collectionRef = this.getCollectionRef(args, validate)`
-          : `const collectionRef = this.getCollectionRef(validate)`
-      }
-      return clientDocument(collectionRef, documentId)
-    },`
-}
-
-function createCollectionGroupRef(
-  currentCollection: string,
-  indent: string,
-  isAdmin: boolean
-) {
-  return isAdmin
-    ? `${indent}  getCollectionGroupRef: (validate: boolean = false): AdminCollectionGroup<z.infer<typeof this._doc>> => {
-    const path = \`${currentCollection}\`
-    return firestoreInstance.collectionGroup(path).withConverter(this._converter(validate))
-  },`
-    : `${indent}  getCollectionGroupRef: (validate: boolean = false): ClientQuery<z.infer<typeof this._doc>> => {
-    const path = \`${currentCollection}\`
-    return clientCollectionGroup(firestoreInstance, path).withConverter(this._converter(validate))
-  },`
-}
-
-function createGetCollectionRef(
-  parents: Array<string>,
-  indent: string,
-  isAdmin: boolean
-) {
-  const argsPath = parents.slice(0, -1)
-  const args = argsPath.map(p => `${p}Id: string`).join(", ")
-
-  const pathParts = []
-  for (let i = 0; i < argsPath.length; i++) {
-    pathParts.push(parents[i])
-    pathParts.push(`\${args.${argsPath[i]}Id}`)
-  }
-  pathParts.push(parents[parents.length - 1])
-  const path = pathParts.join("/")
-
-  return isAdmin
-    ? `${indent}  getCollectionRef: (${
-        argsPath.length > 0
-          ? `args: {${args}}, validate: boolean = false`
-          : "validate: boolean = false"
-      }): AdminCollectionReference<z.infer<typeof this._doc>> => {
-    const path = \`${path}\`
-    return firestoreInstance.collection(path).withConverter(this._converter(validate))
-  },`
-    : `${indent}  getCollectionRef: (${
-        argsPath.length > 0
-          ? `args: {${args}}, validate: boolean = false`
-          : "validate: boolean = false"
-      }): ClientQuery<z.infer<typeof this._doc>> => {
-    const path = \`${path}\`
-    return clientCollection(firestoreInstance, path).withConverter(this._converter(validate))
-  },`
-}
-
-function generateConverter(indent: string, isAdmin: boolean) {
-  return isAdmin
-    ? `${indent}  _converter: (validate: boolean) => ({
-    toFirestore(data: z.infer<typeof this._doc>): AdminDocumentData {
-      const parsed = validate ? this._doc.parse(data) : data
-      return parsed as AdminDocumentData
-    },
-    fromFirestore(
-      snapshot: AdminQueryDocumentSnapshot
-    ): z.infer<typeof this._doc> {
-      const data = snapshot.data()!
-      const parsed = validate ? this._doc.parse(data) : data
-      return parsed as z.infer<typeof this._doc>
-    },
-  }),`
-    : `${indent}  _converter: (validate: boolean) => ({
-    toFirestore(data: z.infer<typeof this._doc>): ClientDocumentData {
-      const parsed = validate ? this._doc.parse(data) : data
-      return parsed as ClientDocumentData
-    },
-    fromFirestore(
-      snapshot: ClientQueryDocumentSnapshot,
-      options: ClientSnapshotOptions
-    ): z.infer<typeof this._doc> {
-      const data = snapshot.data(options)!
-      const parsed = validate ? this._doc.parse(data) : data
-      return parsed as z.infer<typeof this._doc>
-    },
-  }),`
-}
-
-export function generateTypeScriptObject(
-  tree: any,
-  indent: string = "",
-  parents: Array<string> = [],
-  isAdmin: boolean = true
-): string {
-  const lines: string[] = ["{"]
-
-  if (
-    parents.length > 0 &&
-    !parents.includes("_doc") &&
-    !parents.includes("_parents") &&
-    !parents.includes("_converter")
-  ) {
-    lines.push(createGetCollectionRef(parents, indent, isAdmin))
-    lines.push(
-      createCollectionGroupRef(parents[parents.length - 1], indent, isAdmin)
-    )
-    lines.push(createDocumentRef(parents, indent, isAdmin))
-  }
-
-  if (tree._doc) {
-    lines.push(generateConverter(indent, isAdmin))
-  }
-
-  for (const [key, value] of Object.entries(tree)) {
-    const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : `"${key}"`
-
-    if (value === null) {
-      lines.push(`${indent}  ${safeKey}: null,`)
-    } else if (key === "_doc") {
-      lines.push(`${indent}  ${safeKey}: ${value},`)
-    } else if (key === "_parents") {
-      lines.push(`${indent}  ${safeKey}: ${JSON.stringify(value)},`)
-    } else if (key === "_converter") {
-      continue
+  for (const [key, value] of Object.entries(systemTree)) {
+    if (key === "_schema") {
+      schemaStr += `_schema: z.object({${value}}),`
     } else {
-      lines.push(
-        `${indent}  ${safeKey}: ${generateTypeScriptObject(
-          value,
-          indent + "  ",
-          [...parents, safeKey],
-          isAdmin
-        )}`
-      )
+      schemaStr += `${JSON.stringify(key)}: ${generateSchemaTree(value)},`
     }
   }
 
-  lines.push(`${indent}}${indent === "" ? "" : ","}`)
-  return lines.join("\n")
+  schemaStr += "}"
+  return schemaStr
+}
+export function generateConvertersTree(
+  schemaName: string,
+  tree: Record<string, any>,
+  modes: Array<"admin" | "client">,
+  parents: Array<string> = []
+): string {
+  let convertersStr = "{"
+
+  for (const [key, value] of Object.entries(tree)) {
+    if (key === "_schema") {
+      const schemaPath = parents.join(".")
+      if (modes.includes("admin")) {
+        convertersStr += `"_adminConverter": (validate: boolean = false) => ({
+          toFirestore(
+            data: z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema>
+          ): AdminDocumentData {
+            const parsed = validate
+              ? ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema.parse(data)
+              : data
+            return parsed as AdminDocumentData
+          },
+          fromFirestore(
+            snapshot: AdminQueryDocumentSnapshot
+          ): z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema> {
+            const data = snapshot.data()!
+            const parsed = validate
+              ? ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema.parse(data)
+              : data
+            return parsed as z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema>
+          },
+        }),`
+      }
+      if (modes.includes("client")) {
+        convertersStr += `"_clientConverter": (validate: boolean = false) => ({
+          toFirestore(
+            data: z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema>
+          ): ClientDocumentData {
+            const parsed = validate
+              ? ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema.parse(data)
+              : data
+            return parsed as ClientDocumentData
+          },
+          fromFirestore(
+            snapshot: ClientQueryDocumentSnapshot,
+            options: ClientSnapshotOptions
+          ): z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema> {
+            const data = snapshot.data(options)!
+            const parsed = validate
+              ? ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema.parse(data)
+              : data
+            return parsed as z.infer<typeof ${schemaName}${
+          schemaPath ? "." + schemaPath : ""
+        }._schema>
+          },
+        }),`
+      }
+    } else if (typeof value === "object") {
+      convertersStr += `${JSON.stringify(key)}: ${generateConvertersTree(
+        schemaName,
+        value,
+        modes,
+        [...parents, key]
+      )},`
+    }
+  }
+
+  convertersStr += "}"
+  return convertersStr
+}
+
+export function generateCreationFunction(
+  tree: Record<string, any>,
+  mode: "admin" | "client"
+) {
+  let creationFunction = `export function createFireType${
+    mode === "admin" ? "Admin" : "Client"
+  }(firestoreInstance: ${
+    mode === "admin" ? "AdminFirestore" : "ClientFirestore"
+  }) {
+  return {`
+
+  function processNode(
+    node: Record<string, any>,
+    currentPath: string[] = [],
+    parentArgs: { [key: string]: string } = {}
+  ): string {
+    let result = ""
+
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "_schema") continue
+
+      const newPath = [...currentPath, key]
+      const pathString = newPath.join("/")
+
+      // Create args object for the current level
+      const currentArgs = { ...parentArgs }
+      if (currentPath.length > 0) {
+        const parentKey = currentPath[currentPath.length - 1]
+        currentArgs[`${parentKey}Id`] = ""
+      }
+
+      result += `
+    ${key}: {${generateGetDocumentRef(pathString, mode, currentArgs)}
+      ${generateGetCollectionRef(pathString, mode, currentArgs)}
+      ${generateGetCollectionGroupRef(pathString, mode, currentArgs)}`
+
+      if (typeof value === "object" && value !== null) {
+        result += processNode(value, newPath, currentArgs)
+      }
+
+      result += `
+    },`
+    }
+
+    return result
+  }
+
+  creationFunction += processNode(tree)
+  creationFunction += `
+  }
+}`
+
+  return creationFunction
+}
+
+function generateGetDocumentRef(
+  path: string,
+  mode: "admin" | "client",
+  args?: { [key: string]: string }
+): string {
+  const argsString =
+    args && Object.keys(args).length > 0
+      ? `args: { ${Object.keys(args).join(": string; ")}: string }, `
+      : ""
+
+  // Split path into segments and insert args after each collection
+  const pathSegments = path.split("/")
+  const pathWithArgs = pathSegments
+    .map((segment, i) => {
+      if (i === 0) return segment // First segment is just the collection name
+      const prevSegment = pathSegments[i - 1]
+      return `\${args.${prevSegment}Id}/${segment}` // Insert arg after each collection
+    })
+    .join("/")
+
+  if (mode === "admin") {
+    return `
+      getDocumentRef: (
+        ${argsString}documentId: string,
+        validate: boolean = false
+      ): AdminDocumentReference<
+        z.infer<typeof databaseSchema${getSchemaPath(path)}._schema>
+      > => {
+        const path = \`${pathWithArgs}\`
+        const collectionRef = firestoreInstance
+          .collection(path)
+          .withConverter(databaseConverters${getSchemaPath(
+            path
+          )}._adminConverter(validate))
+        return collectionRef.doc(documentId)
+      },`
+  } else {
+    return `
+      getDocumentRef: (
+        ${argsString}documentId: string,
+        validate: boolean = false
+      ): ClientDocumentReference<
+        z.infer<typeof databaseSchema${getSchemaPath(path)}._schema>
+      > => {
+        const path = \`${pathWithArgs}\`
+        const collectionRef = clientCollection(
+          firestoreInstance,
+          path
+        ).withConverter(databaseConverters${getSchemaPath(
+          path
+        )}._clientConverter(validate))
+        return clientDocument(collectionRef, documentId)
+      },`
+  }
+}
+
+function generateGetCollectionRef(
+  path: string,
+  mode: "admin" | "client",
+  args?: { [key: string]: string }
+): string {
+  const argsString =
+    args && Object.keys(args).length > 0
+      ? `args: { ${Object.keys(args).join(": string; ")}: string }, `
+      : ""
+
+  // Split path into segments and insert args after each collection
+  const pathSegments = path.split("/")
+  const pathWithArgs = pathSegments
+    .map((segment, i) => {
+      if (i === 0) return segment // First segment is just the collection name
+      const prevSegment = pathSegments[i - 1]
+      return `\${args.${prevSegment}Id}/${segment}` // Insert arg after each collection
+    })
+    .join("/")
+
+  if (mode === "admin") {
+    return `
+      getCollectionRef: (
+        ${argsString}validate: boolean = false
+      ): AdminCollectionReference<
+        z.infer<typeof databaseSchema${getSchemaPath(path)}._schema>
+      > => {
+        const path = \`${pathWithArgs}\`
+        return firestoreInstance
+          .collection(path)
+          .withConverter(databaseConverters${getSchemaPath(
+            path
+          )}._adminConverter(validate))
+      },`
+  } else {
+    return `
+      getCollectionRef: (
+        ${argsString}validate: boolean = false
+      ): ClientQuery<z.infer<typeof databaseSchema${getSchemaPath(
+        path
+      )}._schema>> => {
+        const path = \`${pathWithArgs}\`
+        return clientCollection(firestoreInstance, path).withConverter(
+          databaseConverters${getSchemaPath(path)}._clientConverter(validate)
+        )
+      },`
+  }
+}
+
+function generateGetCollectionGroupRef(
+  path: string,
+  mode: "admin" | "client",
+  args?: { [key: string]: string }
+): string {
+  // Get the last segment of the path since collection group queries operate on the last collection
+  const lastSegment = path.split("/").pop()
+
+  if (mode === "admin") {
+    return `
+      getCollectionGroupRef: (
+        validate: boolean = false
+      ): AdminCollectionGroup<
+        z.infer<typeof databaseSchema${getSchemaPath(path)}._schema>
+      > => {
+        const path = \`${lastSegment}\`
+        return firestoreInstance
+          .collectionGroup(path)
+          .withConverter(databaseConverters${getSchemaPath(
+            path
+          )}._adminConverter(validate))
+      },`
+  } else {
+    return `
+      getCollectionGroupRef: (
+        validate: boolean = false
+      ): ClientQuery<z.infer<typeof databaseSchema${getSchemaPath(
+        path
+      )}._schema>> => {
+        const path = \`${lastSegment}\`
+        return clientCollectionGroup(firestoreInstance, path).withConverter(
+          databaseConverters${getSchemaPath(path)}._clientConverter(validate)
+        )
+      },`
+  }
+}
+
+function getSchemaPath(path: string): string {
+  return path
+    .split("/")
+    .filter(segment => !segment.includes("${"))
+    .map(segment => `.${segment}`)
+    .join("")
 }

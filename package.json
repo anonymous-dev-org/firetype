@@ -1,9 +1,9 @@
 {
   "name": "firetype",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Typesafe ODM for Firestore",
-  "main": "dist/firetype.js",
-  "types": "dist/firetype.d.ts",
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
   "author": "Anonymous.dev",
   "license": "MIT",
   "private": false,
@@ -13,6 +13,7 @@
   },
   "files": [
     "dist",
+    "src",
     "README.md"
   ],
   "dependencies": {
