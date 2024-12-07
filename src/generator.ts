@@ -42,9 +42,13 @@ export function generateFiretypeFile(
 
   generatedFile += `\n\nconst ${converterName} = ${convertersTree}`
 
-  generatedFile += `\n\n${generateCreationFunction(tree, "admin")}`
+  if (modes.includes("admin")) {
+    generatedFile += `\n\n${generateCreationFunction(tree, "admin")}`
+  }
 
-  generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
+  if (modes.includes("client")) {
+    generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
+  }
 
   // Use the firetype directory as the target location if no outputPath is provided
   const targetPath = outputPath || path.join(firetypePath, "firetype.ts")
