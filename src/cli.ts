@@ -63,7 +63,7 @@ async function generate(options: CliOptions) {
   }
 
   try {
-    const outputPath = path.join(__dirname, "firetype.ts")
+    const outputPath = path.join(__dirname, "index.ts")
 
     const firetypePath = findFiretypeFolder(process.cwd())
     if (!firetypePath) {

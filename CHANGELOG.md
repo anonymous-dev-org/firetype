@@ -1,5 +1,17 @@
 # firetype
 
+## 0.4.0
+
+### Minor Changes
+
+- improved
+
+## 0.3.1
+
+### Patch Changes
+
+- fix
+
 ## 0.3.0
 
 ### Minor Changes

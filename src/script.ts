@@ -164,7 +164,6 @@ export function generateConvertersTree(
   convertersStr += "}"
   return convertersStr
 }
-
 export function generateCreationFunction(
   tree: Record<string, any>,
   mode: "admin" | "client"
@@ -196,20 +195,23 @@ export function generateCreationFunction(
         currentArgs[`${parentKey}Id`] = ""
       }
 
-      // Check if the folder has a schema file (i.e. _schema exists)
-      if (value && typeof value === "object" && value._schema) {
-        result += `
-    ${key}: {${generateGetDocumentRef(pathString, mode, currentArgs)}
+      if (value && typeof value === "object") {
+        let nodeContent = ""
+        if (value._schema) {
+          nodeContent += `
+      ${generateGetDocumentRef(pathString, mode, currentArgs)}
       ${generateGetCollectionRef(pathString, mode, currentArgs)}
       ${generateGetCollectionGroupRef(pathString, mode, currentArgs)}`
-
-        // Recursively process subcollections if any
-        result += processNode(value, newPath, currentArgs)
-
+        }
+        // Always check for subcollections even if there's no schema
+        const subcollections = processNode(value, newPath, currentArgs)
+        if (subcollections.trim()) {
+          nodeContent += subcollections
+        }
         result += `
-    },`
+    ${key}: {${nodeContent ? "\n" + nodeContent : ""}\n    },`
       } else {
-        // No schema file in this folder; return an empty object for this key.
+        // For non-object values, simply return an empty object.
         result += `
     ${key}: {},`
       }
@@ -222,7 +224,6 @@ export function generateCreationFunction(
   creationFunction += `
   }
 }`
-
   return creationFunction
 }
 

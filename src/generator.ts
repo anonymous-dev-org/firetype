@@ -59,21 +59,6 @@ export function generateFiretypeFile(
     fs.mkdirSync(targetDir, { recursive: true })
   }
 
-  // New generation logic: Always generate a file that exports only the two functions.
-  const generatedSchemaContent = `
-export function createFireTypeAdmin() {
-  // Implementation for admin Firestore schema creation.
-  // TODO: Add your admin schema generation logic here.
-  return {/* admin types definition */};
-}
-
-export function createFireTypeClient() {
-  // Implementation for client Firestore schema creation.
-  // TODO: Add your client schema generation logic here.
-  return {/* client types definition */};
-}
-`.trim()
-
-  fs.writeFileSync(targetPath, generatedSchemaContent, "utf8")
+  fs.writeFileSync(targetPath, generatedFile)
   return targetPath
 }
