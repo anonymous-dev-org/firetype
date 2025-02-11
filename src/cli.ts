@@ -63,14 +63,14 @@ async function generate(options: CliOptions) {
   }
 
   try {
-    const outputPath = path.join(__dirname, "index.ts")
-
     const firetypePath = findFiretypeFolder(process.cwd())
     if (!firetypePath) {
       throw new Error(
         "Could not find 'firetype' folder. Make sure it exists in your project directory or its parent directories."
       )
     }
+
+    const outputPath = path.join(firetypePath, "index.ts")
 
     const generatedPath = generateFiretypeFile(firetypePath, modes, outputPath)
     console.log(`🔥🔥🔥🔥 Generated Firetype schema at: ${generatedPath}`)

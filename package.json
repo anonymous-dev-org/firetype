@@ -1,9 +1,7 @@
 {
   "name": "firetype",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Typesafe ODM for Firestore",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "author": "Anonymous.dev",
   "license": "MIT",
   "private": false,
@@ -37,9 +35,5 @@
   },
   "bin": {
     "firetype": "dist/cli.js"
-  },
-  "exports": {
-    ".": "./dist/index.js",
-    "./schema": "./dist/index.ts"
   }
 }

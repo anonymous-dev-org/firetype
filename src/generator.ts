@@ -50,8 +50,7 @@ export function generateFiretypeFile(
     generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
   }
 
-  // Use the firetype directory as the target location if no outputPath is provided
-  const targetPath = outputPath || path.join(firetypePath, "firetype.ts")
+  const targetPath = outputPath || path.join(firetypePath, "index.ts")
   const targetDir = path.dirname(targetPath)
 
   // Ensure the output directory exists
