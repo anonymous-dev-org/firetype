@@ -8,7 +8,6 @@ type Command = "generate" | "init" | "help"
 type Mode = "admin" | "client"
 
 interface CliOptions {
-  output?: string
   mode?: Mode
 }
 
@@ -29,44 +28,26 @@ async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
     }
   }
 
-  // Parse remaining arguments
-  const startIndex = command === "generate" && options.mode ? 2 : 1
-  for (let i = startIndex; i < args.length; i++) {
-    const arg = args[i]
-    if (arg.startsWith("--")) {
-      const option = arg.slice(2)
-      if (option.startsWith("output=")) {
-        options.output = option.split("=")[1]
-      }
-    }
-  }
-
   return { command, options }
 }
 
-// Add this new function to search for the firetype folder
 function findFiretypeFolder(startPath: string): string | null {
-  // Check if the current directory has a firetype folder
   const firetypePath = path.join(startPath, "firetype")
   if (fs.existsSync(firetypePath) && fs.statSync(firetypePath).isDirectory()) {
     return firetypePath
   }
 
-  // Check src directory if it exists
   const srcPath = path.join(startPath, "src", "firetype")
   if (fs.existsSync(srcPath) && fs.statSync(srcPath).isDirectory()) {
     return srcPath
   }
 
-  // Get parent directory
   const parentDir = path.dirname(startPath)
 
-  // Stop if we've reached the root
   if (parentDir === startPath) {
     return null
   }
 
-  // Recursively check parent directory
   return findFiretypeFolder(parentDir)
 }
 
@@ -82,11 +63,8 @@ async function generate(options: CliOptions) {
   }
 
   try {
-    const outputPath = options.output
-      ? path.resolve(process.cwd(), options.output, "firetype.ts")
-      : undefined
+    const outputPath = path.join(__dirname, "firetype.ts")
 
-    // Find the firetype folder
     const firetypePath = findFiretypeFolder(process.cwd())
     if (!firetypePath) {
       throw new Error(
@@ -107,27 +85,23 @@ function showHelp() {
 Firetype CLI - Typesafe ODM for Firestore
 
 Usage:
-  firetype <command> [mode] [options]
+  firetype <command> [mode]
 
 Commands:
   generate [mode]  Generate TypeScript types from your Firestore schema
-  init            Initialize a new Firetype project
-  help            Show this help message
+  init             Initialize a new Firetype project
+  help             Show this help message
 
 Mode:
-  admin           Generate only admin types
-  client          Generate only client types
+  admin            Generate only admin types
+  client           Generate only client types
   
   Note: If no mode is specified, both admin and client types will be generated
-
-Options:
-  --output=<dir>  Specify output directory for generated files
 
 Examples:
   firetype generate
   firetype generate admin
   firetype generate client
-  firetype generate admin --output=./types
   firetype init
 `)
 }

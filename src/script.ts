@@ -24,6 +24,7 @@ export function createImportStatements(modes: Array<"admin" | "client">) {
   DocumentData as ClientDocumentData,
   collectionGroup as clientCollectionGroup,
   Query as ClientQuery,
+  CollectionReference as ClientCollectionReference,
   DocumentReference as ClientDocumentReference,
   collection as clientCollection,
   doc as clientDocument,
@@ -195,17 +196,23 @@ export function generateCreationFunction(
         currentArgs[`${parentKey}Id`] = ""
       }
 
-      result += `
+      // Check if the folder has a schema file (i.e. _schema exists)
+      if (value && typeof value === "object" && value._schema) {
+        result += `
     ${key}: {${generateGetDocumentRef(pathString, mode, currentArgs)}
       ${generateGetCollectionRef(pathString, mode, currentArgs)}
       ${generateGetCollectionGroupRef(pathString, mode, currentArgs)}`
 
-      if (typeof value === "object" && value !== null) {
+        // Recursively process subcollections if any
         result += processNode(value, newPath, currentArgs)
-      }
 
-      result += `
+        result += `
     },`
+      } else {
+        // No schema file in this folder; return an empty object for this key.
+        result += `
+    ${key}: {},`
+      }
     }
 
     return result
@@ -313,7 +320,7 @@ function generateGetCollectionRef(
     return `
       getCollectionRef: (
         ${argsString}validate: boolean = false
-      ): ClientQuery<z.infer<typeof databaseSchema${getSchemaPath(
+      ): ClientCollectionReference<z.infer<typeof databaseSchema${getSchemaPath(
         path
       )}._schema>> => {
         const path = \`${pathWithArgs}\`
