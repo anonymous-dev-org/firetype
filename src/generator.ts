@@ -1,4 +1,3 @@
-import * as fs from "fs"
 import * as path from "path"
 import {
   createImportStatements,
@@ -9,26 +8,17 @@ import {
 } from "./script"
 
 export function generateFiretypeFile(
-  firetypePath: string,
-  modes: Array<"admin" | "client">,
-  outputPath?: string
+  firstDir: string,
+  modes: Array<"admin" | "client">
 ) {
   let generatedFile = ""
-  // Read the first directory in the firetype folder
-  const firstDir = fs
-    .readdirSync(firetypePath)
-    .map(name => path.join(firetypePath, name))
-    .filter(filePath => fs.statSync(filePath).isDirectory())[0]
-
-  if (!firstDir) {
-    throw new Error("No directories found in the firetype folder")
-  }
 
   generatedFile += createImportStatements(modes)
 
   const firstDirName = path.basename(firstDir)
 
   const tree = generateFileSystemTree(firstDir)
+
   // Generate tree starting from the first directory
   const treeSchema = generateSchemaTree(tree)
   const schemaName = `${firstDirName}Schema`
@@ -50,14 +40,5 @@ export function generateFiretypeFile(
     generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
   }
 
-  const targetPath = outputPath || path.join(firetypePath, "index.ts")
-  const targetDir = path.dirname(targetPath)
-
-  // Ensure the output directory exists
-  if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true })
-  }
-
-  fs.writeFileSync(targetPath, generatedFile)
-  return targetPath
+  return generatedFile
 }

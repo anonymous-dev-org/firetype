@@ -4,31 +4,39 @@ import { generateFiretypeFile } from "./generator"
 import * as path from "path"
 import * as fs from "fs"
 
-type Command = "generate" | "init" | "help"
+type Command = "generate" | "help"
 type Mode = "admin" | "client"
 
 interface CliOptions {
   mode?: Mode
+  startPath?: string
+  outputPath?: string
 }
+
+const MODE_ARG = "--mode="
+const INPUT_ARG = "--input="
+const OUTPUT_ARG = "--output="
 
 async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
   const args = process.argv.slice(2)
-  const command = (args[0] || "help") as Command
   const options: CliOptions = {}
 
-  // Check if mode is specified right after generate command
-  if (command === "generate" && args[1] && !args[1].startsWith("--")) {
-    const mode = args[1].toLowerCase()
-    if (mode === "admin" || mode === "client") {
-      options.mode = mode
-    } else {
-      throw new Error(
-        `Invalid mode: ${mode}. Must be either 'admin' or 'client'`
-      )
-    }
-  }
+  const commandArg = args.find(arg => !arg.startsWith("--")) || "help"
 
-  return { command, options }
+  args.forEach(arg => {
+    if (arg.startsWith(MODE_ARG)) {
+      const modeValue = arg.slice(MODE_ARG.length).toLowerCase()
+      if (modeValue === "admin" || modeValue === "client") {
+        options.mode = modeValue as Mode
+      }
+    } else if (arg.startsWith(INPUT_ARG)) {
+      options.startPath = arg.slice(INPUT_ARG.length)
+    } else if (arg.startsWith(OUTPUT_ARG)) {
+      options.outputPath = arg.slice(OUTPUT_ARG.length)
+    }
+  })
+
+  return { command: commandArg as Command, options }
 }
 
 function findFiretypeFolder(startPath: string): string | null {
@@ -43,7 +51,6 @@ function findFiretypeFolder(startPath: string): string | null {
   }
 
   const parentDir = path.dirname(startPath)
-
   if (parentDir === startPath) {
     return null
   }
@@ -52,28 +59,73 @@ function findFiretypeFolder(startPath: string): string | null {
 }
 
 async function generate(options: CliOptions) {
-  console.log("🪵💥 Generating Firetype schemas...")
+  console.log(
+    "💥 Generating Firetype schemas..." +
+      (options.startPath ? ` from ${options.startPath}` : "")
+  )
 
   let modes: Mode[]
   if (options.mode) {
     modes = [options.mode]
-    console.log(`Generating ${options.mode} types only`)
   } else {
     modes = ["admin", "client"]
   }
 
+  const startPath = options.startPath
+    ? path.resolve(process.cwd(), options.startPath)
+    : process.cwd()
+
   try {
-    const firetypePath = findFiretypeFolder(process.cwd())
-    if (!firetypePath) {
+    let outputPath: string
+    if (options.outputPath) {
+      if (!fs.existsSync(options.outputPath)) {
+        fs.mkdirSync(options.outputPath, { recursive: true })
+      } else if (!fs.statSync(options.outputPath).isDirectory()) {
+        throw new Error(
+          `Provided output path '${options.outputPath}' exists but is not a directory.`
+        )
+      }
+      outputPath = options.outputPath
+    } else {
+      // Use process.env.INIT_CWD if available to start from where the command was run
+      const foundPath = findFiretypeFolder(startPath)
+      if (!foundPath) {
+        throw new Error(
+          "Could not find 'firetype' folder. Make sure it exists in your project directory or its parent directories."
+        )
+      }
+      outputPath = foundPath
+    }
+
+    const firstDir = fs
+      .readdirSync(startPath)
+      .map(name => path.join(startPath, name))
+      .filter(filePath => fs.statSync(filePath).isDirectory())[0]
+
+    if (!firstDir) {
       throw new Error(
-        "Could not find 'firetype' folder. Make sure it exists in your project directory or its parent directories."
+        `No directories found in the firetype folder: ${startPath}`
       )
     }
 
-    const outputPath = path.join(firetypePath, "index.ts")
+    const generatedFile = generateFiretypeFile(firstDir, modes)
+    const targetPath = outputPath || path.join(startPath, "index.ts")
+    const targetDir = path.dirname(targetPath)
 
-    const generatedPath = generateFiretypeFile(firetypePath, modes, outputPath)
-    console.log(`🔥🔥🔥🔥 Generated Firetype schema at: ${generatedPath}`)
+    // Ensure the output directory exists
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true })
+    }
+
+    let filePath = targetPath
+    if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
+      filePath = path.join(targetPath, "index.ts")
+    }
+    fs.writeFileSync(filePath, generatedFile)
+    console.log(
+      `🔥🔥🔥🔥 Generated Firetype schema` +
+        (options.outputPath ? ` at ${filePath}` : "")
+    )
   } catch (error) {
     console.error("Failed to generate schema:", error)
     throw error
@@ -85,24 +137,22 @@ function showHelp() {
 Firetype CLI - Typesafe ODM for Firestore
 
 Usage:
-  firetype <command> [mode]
+  firetype <command> [options]
 
 Commands:
-  generate [mode]  Generate TypeScript types from your Firestore schema
-  init             Initialize a new Firetype project
-  help             Show this help message
+  generate    Generate TypeScript types from your Firestore schema
+  help        Show this help message
 
-Mode:
-  admin            Generate only admin types
-  client           Generate only client types
-  
-  Note: If no mode is specified, both admin and client types will be generated
+Options:
+  --mode=<admin|client>   Generate only admin or client types. Defaults to generating both if not provided.
+  --input=<path>          Optional start directory to search for the firetype folder. Defaults to the current working directory.
+  --output=<path>         Optional output directory for the generated file. Defaults to the found firetype folder if not provided.
 
 Examples:
   firetype generate
-  firetype generate admin
-  firetype generate client
-  firetype init
+  firetype generate --mode=admin
+  firetype generate --mode=client --input=/my/start/path
+  firetype generate --mode=admin --input=/my/start/path --output=/my/output/path
 `)
 }
 
@@ -110,6 +160,7 @@ async function main() {
   try {
     const { command, options } = await parseArgs()
 
+    console.log("main", command, options)
     switch (command) {
       case "generate":
         await generate(options)
