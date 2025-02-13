@@ -1,6 +1,6 @@
 {
   "name": "firetype",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Typesafe ODM for Firestore",
   "author": "Anonymous.dev",
   "license": "MIT",

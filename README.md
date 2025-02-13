@@ -5,12 +5,12 @@ Firetype is a lightweight wrapper around the Firestore SDK that adds type safety
 ## Features
 
 - 🎯 **Type-Safe SDK Extension**: Adds TypeScript type inference to your existing Firestore SDK operations
+- 📁 **Folder-Based Schema Definition**: Easily define and organize your Firestore database schema in a folder-based manner directly from your code, including support for nested collections
 - 🔄 **Schema Validation**: Integrates Zod for optional runtime data validation
 - 🛠️ **CLI Tool**: Generates type definitions from your schema definitions
 - ⚡ **SDK Compatibility**: Seamlessly works with both `firebase-admin` and `firebase/firestore` SDKs
-- 📁 **Collection Structure Support**: Maintains support for nested collections
 
-> ⚠️ **Note**: Firetype extends the Firestore SDK and is not a replacement. You'll still need to install and use either `firebase-admin` or `firebase/firestore` as your primary SDK. Firetype simply adds type safety and schema validation on top of these SDKs.
+> ⚠️ **Note**: Firetype extends the Firestore SDK and is not a replacement. You'll still need to install and use either `firebase-admin` or `firebase/firestore` as your primary SDK.
 
 ## Installation
 
@@ -28,7 +28,7 @@ yarn add firetype
 mkdir -p firetype
 ```
 
-2. Create a folder for each database you have (or just one folder if you huse only the default one)
+2. Create a folder for each database you have (or just one folder if you use only the default one)
 
 ```bash
 mkdir -p firetype/database
@@ -49,7 +49,13 @@ export const schema = z.object({
 4. Generate the type definitions:
 
 ```bash
-firetype generate
+yarn firetype generate
+```
+
+# or
+
+```bash
+npx firetype generate
 ```
 
 5. Use the generated types in your code:
@@ -85,10 +91,13 @@ const snapshot = await getDoc(userRef)
 firetype generate
 
 # Generate types only for admin SDK
-firetype generate admin
+firetype generate --mode=admin
 
 # Generate types only for client SDK
-firetype generate client
+firetype generate --mode=client
+
+# Specify custom input directory
+firetype generate --input=./src
 
 # Specify custom output directory
 firetype generate --output=./types
@@ -135,38 +144,17 @@ export const schema = z.object({
 })
 ```
 
-## Type Safety Features
-
-Firetype provides complete type safety for:
-
-- 📝 Document data validation and typing
-- 🔍 Query operations with type-checked fields
-- 🎯 Field references with autocomplete
-- 📚 Collection references
-- 📄 Document references
-- 🔎 Collection group queries
-
-## Error Handling
-
-Firetype includes runtime validation of your data, which means:
-
-- Invalid data will be caught before it reaches Firestore
-- Type errors are caught during development
-- Runtime errors provide clear, actionable messages
-
 ## Best Practices
 
 1. Keep your schema files in the `firetype` directory
 2. Use descriptive names for your collections
-3. Generate types before building your application
-4. Commit generated types to version control
-5. Use separate schemas for nested collections
+3. Generate types with the `firetype generate` before building your application
 
 ## Requirements
 
 - Node.js 14 or later
 - TypeScript 4.5 or later
-- Firebase 9.x or later / Firebase Admin 10.x or later
+- Firebase 11.x or later / Firebase Admin 13.x 
 
 ## Contributing
 
