@@ -9,17 +9,24 @@ type Mode = "admin" | "client"
 
 interface CliOptions {
   mode?: Mode
-  startPath?: string
-  outputPath?: string
+  path?: string
+  startPath: string
+  outputPath: string
 }
 
 const MODE_ARG = "--mode="
 const INPUT_ARG = "--input="
 const OUTPUT_ARG = "--output="
+const PATH_ARG = "--path="
+
+const YELLOW = "\x1b[33m"
+const ORANGE = "\x1b[38;2;255;165;0m" // Custom RGB for ORANGE
+const RED = "\x1b[31m"
+const RESET = "\x1b[0m"
 
 async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
   const args = process.argv.slice(2)
-  const options: CliOptions = {}
+  const options: Partial<CliOptions> = {}
 
   const commandArg = args.find(arg => !arg.startsWith("--")) || "help"
 
@@ -29,6 +36,8 @@ async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
       if (modeValue === "admin" || modeValue === "client") {
         options.mode = modeValue as Mode
       }
+    } else if (arg.startsWith(PATH_ARG)) {
+      options.path = arg.slice(PATH_ARG.length)
     } else if (arg.startsWith(INPUT_ARG)) {
       options.startPath = arg.slice(INPUT_ARG.length)
     } else if (arg.startsWith(OUTPUT_ARG)) {
@@ -36,32 +45,77 @@ async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
     }
   })
 
-  return { command: commandArg as Command, options }
-}
+  // For the generate command, both input and output paths are requiRED
+  if (commandArg === "generate") {
+    // If path is provided, use it for both startPath and outputPath
+    if (options.path) {
+      options.startPath = options.startPath || options.path
+      options.outputPath = options.outputPath || options.path
+    }
 
-function findFiretypeFolder(startPath: string): string | null {
-  const firetypePath = path.join(startPath, "firetype")
-  if (fs.existsSync(firetypePath) && fs.statSync(firetypePath).isDirectory()) {
-    return firetypePath
+    if (!options.startPath) {
+      console.error(
+        "Error: Either --input or --path parameter is requiRED for the generate command"
+      )
+      showHelp()
+      process.exit(1)
+    }
+    if (!options.outputPath) {
+      console.error(
+        "Error: Either --output or --path parameter is requiRED for the generate command"
+      )
+      showHelp()
+      process.exit(1)
+    }
   }
 
-  const srcPath = path.join(startPath, "src", "firetype")
-  if (fs.existsSync(srcPath) && fs.statSync(srcPath).isDirectory()) {
-    return srcPath
+  return {
+    command: commandArg as Command,
+    options: options as CliOptions,
   }
-
-  const parentDir = path.dirname(startPath)
-  if (parentDir === startPath) {
-    return null
-  }
-
-  return findFiretypeFolder(parentDir)
 }
 
 async function generate(options: CliOptions) {
   console.log(
-    "💥 Generating Firetype schemas..." +
-      (options.startPath ? ` from ${options.startPath}` : "")
+    `                                            
+                      ${YELLOW}-${RESET}                                                     
+                      ${YELLOW}----${RESET}                                                  
+                       ${YELLOW}-----${RESET}                                                
+                       ${YELLOW}-------${RESET}                                              
+                       ${YELLOW}--------${RESET}                                             
+                      ${YELLOW}+---------${RESET}                                            
+                      ${YELLOW}-----------${RESET}                                           
+                     ${YELLOW}+------------${RESET}                                          
+                    ${YELLOW}++------------${RESET}                                          
+                   ${YELLOW}-++------------${RESET}                                          
+                  ${YELLOW}-+++------------${RESET}                                          
+                ${YELLOW}---+++------------${RESET}   ${YELLOW}-${RESET}                                      
+               ${YELLOW}----++++----------${RESET}    ${YELLOW}---${RESET}                                    
+             ${YELLOW}++----++++---------${RESET}    ${YELLOW}-----${RESET}                                   
+            ${YELLOW}++-----++++--------${RESET}    ${YELLOW}--------${RESET}                                 
+          ${ORANGE}#${YELLOW}+++-----+++++------${RESET}    ${YELLOW}----------${RESET}                                
+         ${ORANGE}##${YELLOW}+++-----+++++++--${RESET}    ${YELLOW}++------------${RESET}                              
+        ${ORANGE}##${YELLOW}++++${ORANGE}#${YELLOW}---+++++++++${RESET}    ${YELLOW}++++++----------${RESET}                             
+      ${ORANGE}####${YELLOW}+++++---+++++++++++++++++++++++-------${RESET}                            
+      ${ORANGE}####${YELLOW}++++++-++++++++++++++++++++++++--------${RESET}                           
+     ${ORANGE}######${YELLOW}+++++${ORANGE}##${YELLOW}+++++++++++++++++++++++---------${RESET}                          
+     ${ORANGE}######${YELLOW}++++++${ORANGE}##${YELLOW}+++++++++++++++++++++----------${RESET}                          
+    ${ORANGE}########${YELLOW}+++++${ORANGE}####${YELLOW}+++++++++${ORANGE}#####${YELLOW}++++-----------${RESET}                          
+    ${ORANGE}#########${YELLOW}+++++${ORANGE}#####${YELLOW}++++${ORANGE}#########${YELLOW}+--------------${RESET}                         
+    ${ORANGE}###########${YELLOW}+++${ORANGE}#######${YELLOW}+${ORANGE}#########${YELLOW}+++-------------${RESET}                         
+    ${RED}#############${YELLOW}++${ORANGE}#######${YELLOW}+${ORANGE}#######${YELLOW}+++++------------${RESET}                         
+    ${RED}##############${YELLOW}+${RED}#############${YELLOW}-+++++++----------${RESET}                          
+     ${RED}#########################${YELLOW}-+++++++++-++++++---${RESET}                          
+     ${RED}#######################${YELLOW}--+++++++++++++++++++${RESET}                           
+      ${RED}#####################${YELLOW}-++++++++++++++++++++-${RESET}                           
+       ${RED}###################${YELLOW}#++++++++++++++++++++++${RESET}                            
+        ${RED}###################${YELLOW}++++++++++++++++++++${RESET}                             
+         ${RED}####################${YELLOW}++++++++++++++++${RESET}                               
+           ${RED}##########${YELLOW}+${RED}#########${YELLOW}+++++++++++++${RESET}                                
+             ${RED}#######${YELLOW}+++${RED}#########${YELLOW}++++++#++${RESET}                                   
+                ${RED}####${YELLOW}+++${RED}##########${YELLOW}++###${RESET}                                      
+                     ${RED}#############${RESET}      
+`
   )
 
   let modes: Mode[]
@@ -71,30 +125,17 @@ async function generate(options: CliOptions) {
     modes = ["admin", "client"]
   }
 
-  const startPath = options.startPath
-    ? path.resolve(process.cwd(), options.startPath)
-    : process.cwd()
+  const startPath = path.resolve(process.cwd(), options.startPath)
+  const outputPath = path.resolve(process.cwd(), options.outputPath)
 
   try {
-    let outputPath: string
-    if (options.outputPath) {
-      if (!fs.existsSync(options.outputPath)) {
-        fs.mkdirSync(options.outputPath, { recursive: true })
-      } else if (!fs.statSync(options.outputPath).isDirectory()) {
-        throw new Error(
-          `Provided output path '${options.outputPath}' exists but is not a directory.`
-        )
-      }
-      outputPath = options.outputPath
-    } else {
-      // Use process.env.INIT_CWD if available to start from where the command was run
-      const foundPath = findFiretypeFolder(startPath)
-      if (!foundPath) {
-        throw new Error(
-          "Could not find 'firetype' folder. Make sure it exists in your project directory or its parent directories."
-        )
-      }
-      outputPath = foundPath
+    // Ensure the output directory exists
+    if (!fs.existsSync(outputPath)) {
+      fs.mkdirSync(outputPath, { recursive: true })
+    } else if (!fs.statSync(outputPath).isDirectory()) {
+      throw new Error(
+        `Provided output path '${options.outputPath}' exists but is not a directory.`
+      )
     }
 
     const firstDir = fs
@@ -103,13 +144,11 @@ async function generate(options: CliOptions) {
       .filter(filePath => fs.statSync(filePath).isDirectory())[0]
 
     if (!firstDir) {
-      throw new Error(
-        `No directories found in the firetype folder: ${startPath}`
-      )
+      throw new Error(`No directories found in the input folder: ${startPath}`)
     }
 
     const generatedFile = generateFiretypeFile(firstDir, modes)
-    const targetPath = outputPath || path.join(startPath, "index.ts")
+    const targetPath = path.join(outputPath, "index.ts")
     const targetDir = path.dirname(targetPath)
 
     // Ensure the output directory exists
@@ -117,15 +156,7 @@ async function generate(options: CliOptions) {
       fs.mkdirSync(targetDir, { recursive: true })
     }
 
-    let filePath = targetPath
-    if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
-      filePath = path.join(targetPath, "index.ts")
-    }
-    fs.writeFileSync(filePath, generatedFile)
-    console.log(
-      `🔥🔥🔥🔥 Generated Firetype schema` +
-        (options.outputPath ? ` at ${filePath}` : "")
-    )
+    fs.writeFileSync(targetPath, generatedFile)
   } catch (error) {
     console.error("Failed to generate schema:", error)
     throw error
@@ -145,14 +176,16 @@ Commands:
 
 Options:
   --mode=<admin|client>   Generate only admin or client types. Defaults to generating both if not provided.
-  --input=<path>          Optional start directory to search for the firetype folder. Defaults to the current working directory.
-  --output=<path>         Optional output directory for the generated file. Defaults to the found firetype folder if not provided.
+  --path=<path>           Shorthand to set both input and output paths to the same directory.
+  --input=<path>          Input directory containing the Firestore schema structure. RequiRED if --path is not provided.
+  --output=<path>         Output directory for the generated TypeScript file. RequiRED if --path is not provided.
 
 Examples:
-  firetype generate
-  firetype generate --mode=admin
-  firetype generate --mode=client --input=/my/start/path
-  firetype generate --mode=admin --input=/my/start/path --output=/my/output/path
+  firetype help
+  firetype generate --input=/path/to/schema --output=/path/to/output
+  firetype generate --path=/path/to/dir
+  firetype generate --mode=admin --input=/path/to/schema --output=/path/to/output
+  firetype generate --mode=client --path=/path/to/dir
 `)
 }
 
@@ -160,10 +193,23 @@ async function main() {
   try {
     const { command, options } = await parseArgs()
 
-    console.log("main", command, options)
     switch (command) {
       case "generate":
         await generate(options)
+
+        let outputLocation = ""
+        if (options.path) {
+          outputLocation = options.path
+        } else {
+          if (options.startPath)
+            outputLocation += `input: ${options.startPath} `
+          if (options.outputPath)
+            outputLocation += `output: ${options.outputPath}`
+        }
+
+        console.log(
+          `${ORANGE}Generated Firetype schema at ${RESET}${outputLocation}`
+        )
         break
       case "help":
         showHelp()

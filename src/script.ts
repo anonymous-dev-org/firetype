@@ -50,9 +50,14 @@ export function generateFileSystemTree(
     } else if (stats.isFile() && item === "schema.ts") {
       try {
         const content = fs.readFileSync(fullPath, "utf-8")
-        const schemaMatch = content.match(/z\.object\(\{([^}]+)\}\)/)
-        if (schemaMatch) {
-          tree._schema = schemaMatch[1]
+
+        const match = content.match(
+          /export\s+const\s+\w+\s*=\s*([\s\S]*?)(;|\n\s*export|\n\s*$)/
+        )
+        if (match && match[1]) {
+          tree["_schema"] = match[1].trim()
+        } else {
+          console.warn(`Could not find exported constant in ${fullPath}`)
         }
       } catch (error) {
         console.warn(`Failed to read schema from ${fullPath}:`, error)
@@ -64,19 +69,18 @@ export function generateFileSystemTree(
 }
 
 export function generateSchemaTree(systemTree: Record<string, any>): string {
-  let schemaStr = "{"
+  let schemaStr = ""
 
   for (const [key, value] of Object.entries(systemTree)) {
     if (key === "_schema") {
-      schemaStr += `_schema: z.object({${value}}),`
+      schemaStr += `_schema: ${value},`
     } else {
-      schemaStr += `${JSON.stringify(key)}: ${generateSchemaTree(value)},`
+      schemaStr += `${JSON.stringify(key)}: {${generateSchemaTree(value)}},`
     }
   }
-
-  schemaStr += "}"
   return schemaStr
 }
+
 export function generateConvertersTree(
   schemaName: string,
   tree: Record<string, any>,

@@ -22,19 +22,13 @@ yarn add firetype
 
 ## Quick Start
 
-1. Create a `firetype` directory in your project:
-
-```bash
-mkdir -p firetype
-```
-
-2. Create a folder for each database you have (or just one folder if you use only the default one)
+1. Create a project structure for your Firestore schemas:
 
 ```bash
 mkdir -p firetype/database
 ```
 
-3. Define your schema using Zod (e.g., `firetype/users/schema.ts`):
+2. Define your schema using Zod (e.g., `firetype/database/users/schema.ts`):
 
 ```typescript
 import { z } from "zod"
@@ -46,19 +40,19 @@ export const schema = z.object({
 })
 ```
 
-4. Generate the type definitions:
+3. Generate the type definitions with the required input and output parameters:
 
 ```bash
-yarn firetype generate
+yarn firetype generate --input=./firetype/database --output=./firetype
 ```
 
-# or
+or
 
 ```bash
-npx firetype generate
+npx firetype generate --input=./firetype/database --output=./firetype
 ```
 
-5. Use the generated types in your code:
+4. Use the generated types in your code:
 
 ```typescript
 // Admin SDK usage
@@ -87,24 +81,23 @@ const snapshot = await getDoc(userRef)
 ## CLI Commands
 
 ```bash
-# Generate types for both admin and client
-firetype generate
+# Generate types for both admin and client (input and output are REQUIRED)
+firetype generate --input=./firetype --output=./firetype
 
 # Generate types only for admin SDK
-firetype generate --mode=admin
+firetype generate --mode=admin --input=./firetype --output=./firetype
 
 # Generate types only for client SDK
-firetype generate --mode=client
+firetype generate --mode=client --input=./firetype --output=./firetype
 
-# Specify custom input directory
-firetype generate --input=./src
-
-# Specify custom output directory
-firetype generate --output=./types
+# Specify different input and output directories
+firetype generate --input=./src/schemas --output=./src/types
 
 # Show help
 firetype help
 ```
+
+> **Note**: Both `--input` and `--output` parameters are required when using the generate command. The input parameter should point to the directory containing your schema definitions, and the output parameter specifies where the generated TypeScript file will be placed.
 
 ## Schema Definition
 
@@ -154,7 +147,7 @@ export const schema = z.object({
 
 - Node.js 14 or later
 - TypeScript 4.5 or later
-- Firebase 11.x or later / Firebase Admin 13.x 
+- Firebase 11.x or later / Firebase Admin 13.x
 
 ## Contributing
 

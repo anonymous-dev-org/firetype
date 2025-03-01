@@ -17,27 +17,31 @@ export function generateFiretypeFile(
 
   const firstDirName = path.basename(firstDir)
 
-  const tree = generateFileSystemTree(firstDir)
+  const fileSystemTree = generateFileSystemTree(firstDir)
 
-  // Generate tree starting from the first directory
-  const treeSchema = generateSchemaTree(tree)
+  const schemaTree = generateSchemaTree(fileSystemTree)
+
   const schemaName = `${firstDirName}Schema`
-  const treeSchemaString = `const ${schemaName} = ${treeSchema}`
+  const treeSchemaString = `const ${schemaName} = {${schemaTree}}`
 
   generatedFile += treeSchemaString
 
-  const convertersTree = generateConvertersTree(schemaName, tree, modes)
+  const convertersTree = generateConvertersTree(
+    schemaName,
+    fileSystemTree,
+    modes
+  )
 
   const converterName = `${firstDirName}Converters`
 
   generatedFile += `\n\nconst ${converterName} = ${convertersTree}`
 
   if (modes.includes("admin")) {
-    generatedFile += `\n\n${generateCreationFunction(tree, "admin")}`
+    generatedFile += `\n\n${generateCreationFunction(fileSystemTree, "admin")}`
   }
 
   if (modes.includes("client")) {
-    generatedFile += `\n\n${generateCreationFunction(tree, "client")}`
+    generatedFile += `\n\n${generateCreationFunction(fileSystemTree, "client")}`
   }
 
   return generatedFile

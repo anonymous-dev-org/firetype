@@ -1,5 +1,41 @@
 # firetype
 
+## 1.2.1
+
+### Patch Changes
+
+- update console log formatting
+
+## 1.2.0
+
+### Minor Changes
+
+- handle nested schema
+
+## 1.1.3
+
+### Patch Changes
+
+- fix
+
+## 1.1.2
+
+### Patch Changes
+
+- improve console log
+
+## 1.1.1
+
+### Patch Changes
+
+- --path to set both input and output
+
+## 1.1.0
+
+### Minor Changes
+
+- required input and output paths
+
 ## 1.0.1
 
 ### Patch Changes
