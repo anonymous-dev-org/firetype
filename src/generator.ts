@@ -2,7 +2,6 @@ import fs from "fs"
 import path from "path"
 import {
   createImportStatements,
-  generateCollectionPathsType,
   generateConvertersTree,
   generateCreationFunction,
   generateFileSystemTree,
@@ -83,19 +82,10 @@ export function generateFiretypeFile(
   const schemaTreeForRefs = buildSchemaObject(combinedTree)
   generatedFile += `\n\nconst ${schemaName} = {${schemaTreeForRefs}}`
 
-  // Export a map of top-level collection paths for better inference
-  const topLevelCollections = Object.entries(combinedTree)
-    .filter(([, value]) => value && typeof value === "object" && value._schema)
-    .map(([key]) => key)
-  const collectionPathsObject = topLevelCollections
-    .map(k => `${JSON.stringify(k)}: ${JSON.stringify(k)}`)
-    .join(", ")
-  generatedFile += `\n\nexport const CollectionPaths = { ${collectionPathsObject} } as const`
-
   // CollectionPath must be declared after databaseSchema so keyof works
   generatedFile += `\n\nexport type CollectionPath = keyof typeof ${schemaName};`
   // Single global typing hook for helpers (use marker property to avoid conflicts)
-  generatedFile += `\n\ndeclare global { interface FiretypeGenerated { __CollectionPath: DatabaseCollectionPaths } }\nexport {}`
+  generatedFile += `\n\ndeclare global { interface FiretypeGenerated { __CollectionPath: CollectionPath } }\nexport {}`
 
   // Utility: Map collection paths to their inferred schema types
   function generateCollectionToSchemaMap(
@@ -123,12 +113,7 @@ export function generateFiretypeFile(
   generatedFile += `\nexport type SchemaOf<P extends CollectionPath> = CollectionToSchemaMap[P]`
   generatedFile += `\nexport type AnyCollectionSchema = CollectionToSchemaMap[CollectionPath]`
 
-  // Generate collection paths type for type safety across all databases
-  const collectionPaths = generateCollectionPathsType(combinedTree)
-  const pathsUnion = collectionPaths.length > 0
-    ? collectionPaths.map(path => `"${path}"`).join(" | ")
-    : '""'
-  generatedFile += `\n\nexport type DatabaseCollectionPaths = ${pathsUnion};`
+  // Removed extraneous DatabaseCollectionPaths export to match expected output
 
   const convertersTree = generateConvertersTree(
     schemaName,

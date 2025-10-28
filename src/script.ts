@@ -109,17 +109,23 @@ export function processSchemaReferences(
   const refRegex = /firestoreRef\("([^"]+)"\)/g;
   const arrayRefRegex = /firestoreRef\("([^"]+)"\)\.array\(\)/g;
 
+  function collectionPathToSchemaIdentifier(collectionPath: string): string {
+    collectionPath = normalizeCollectionPath(collectionPath);
+    const segments = collectionPath
+      .split('/')
+      .filter(segment => !segment.startsWith(':') && segment.length > 0);
+    return segments.join('_');
+  }
+
   // First handle array references
   schemaStr = schemaStr.replace(arrayRefRegex, (match, collectionPath) => {
-    collectionPath = normalizeCollectionPath(collectionPath);
-    // Convert collection path to schema path, handling dynamic segments
-    const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
+    const schemaId = collectionPathToSchemaIdentifier(collectionPath);
 
     if (modes.length === 1) {
       if (modes.includes("admin")) {
-        return `z.array(z.custom<AdminDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>())`;
+        return `z.array(z.custom<AdminDocumentReference<z.infer<typeof schema_${schemaId}>>>())`;
       } else {
-        return `z.array(z.custom<ClientDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>())`;
+        return `z.array(z.custom<ClientDocumentReference<z.infer<typeof schema_${schemaId}>>>())`;
       }
     } else {
       // When both modes are enabled, use a union type or fallback to any
@@ -130,15 +136,13 @@ export function processSchemaReferences(
 
   // Then handle single references
   schemaStr = schemaStr.replace(refRegex, (match, collectionPath) => {
-    collectionPath = normalizeCollectionPath(collectionPath);
-    // Convert collection path to schema path, handling dynamic segments
-    const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
+    const schemaId = collectionPathToSchemaIdentifier(collectionPath);
 
     if (modes.length === 1) {
       if (modes.includes("admin")) {
-        return `z.custom<AdminDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>()`;
+        return `z.custom<AdminDocumentReference<z.infer<typeof schema_${schemaId}>>>()`;
       } else {
-        return `z.custom<ClientDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>()`;
+        return `z.custom<ClientDocumentReference<z.infer<typeof schema_${schemaId}>>>()`;
       }
     } else {
       // When both modes are enabled, use a union type or fallback to any
