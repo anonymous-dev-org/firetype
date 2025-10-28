@@ -38,6 +38,9 @@ export function generateFiretypeFile(
   // Stable alias so consumers don't need to know the folder name
   generatedFile += `\nexport type CollectionPath = ${firstDirName}CollectionPaths;`
 
+  // Global typing hook for the library helpers to consume generated paths without direct imports
+  generatedFile += `\n\ndeclare global { interface FiretypeGenerated { CollectionPath: ${firstDirName}CollectionPaths } }\nexport {}`
+
   const convertersTree = generateConvertersTree(
     schemaName,
     fileSystemTree,
