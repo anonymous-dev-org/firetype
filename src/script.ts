@@ -3,8 +3,7 @@ import * as path from "path"
 
 
 export function createImportStatements(modes: Array<"admin" | "client">) {
-  let importStatements = `import { z } from "zod";
-import { firestoreRef } from "@anonymous-dev/firetype";\n`
+  let importStatements = `import { z } from "zod";\n`
 
   // Add imports based on mode
   if (modes.includes("admin")) {

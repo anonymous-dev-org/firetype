@@ -1,5 +1,11 @@
 # @anonymous-dev/firetype
 
+## 1.2.7
+
+### Patch Changes
+
+- bug fixes
+
 ## 1.2.6
 
 ### Patch Changes
