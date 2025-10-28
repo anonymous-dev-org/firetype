@@ -112,22 +112,20 @@ describe('Generator', () => {
       require('fs').rmdirSync(emptyDir)
     })
 
-    it('should use directory name as schema prefix', () => {
+    it('should include database schema and converters', () => {
       const result = generateFiretypeFile(validDatabasePath, ['admin'])
 
-      // Should use 'database' as the prefix for schema and converters
       expect(result).toContain('const databaseSchema = {')
       expect(result).toContain('const databaseConverters = {')
-
       // Should also generate collection paths type
-      expect(result).toContain('export type databaseCollectionPaths = ')
+      expect(result).toContain('export type DatabaseCollectionPaths = ')
     })
 
     it('should handle firestore reference types', () => {
       const result = generateFiretypeFile(validDatabasePath, ['admin'])
 
-      // Should contain the firestoreRef import
-      expect(result).toContain('import { firestoreRef } from "./references.js"')
+      // Should contain the firestoreRef import from the package
+      expect(result).toContain('import { firestoreRef } from "@anonymous-dev/firetype"')
 
       // Should replace FIRESTORE_REF_PLACEHOLDER with proper DocumentReference types
       expect(result).toContain('AdminDocumentReference<z.infer<typeof databaseSchema.users._schema>>')
@@ -151,7 +149,7 @@ describe('Generator', () => {
     it('should handle both admin and client reference types', () => {
       const result = generateFiretypeFile(validDatabasePath, ['admin', 'client'])
 
-      // When both modes are enabled, references use z.any() since typing is handled by converters
+      // When both modes are enabled, reference types are processed in schemas
       expect(result).toContain('centerRef: z.any()')
       expect(result).toContain('authorRef: z.any()')
       expect(result).toContain('collaboratorRefs: z.array(z.any())')
@@ -165,13 +163,25 @@ describe('Generator', () => {
       const result = generateFiretypeFile(validDatabasePath, ['admin'])
 
       // Should generate a union type of all valid collection paths
-      expect(result).toContain('export type databaseCollectionPaths = ')
+      expect(result).toContain('export type DatabaseCollectionPaths = ')
       expect(result).toContain('"accounts"')
       expect(result).toContain('"centers"')
       expect(result).toContain('"matches"')
       expect(result).toContain('"posts"')
       expect(result).toContain('"users"')
       expect(result).toContain('"users/comments"')
+    })
+
+    it('should generate a valid CollectionToSchemaMap block', () => {
+      const result = generateFiretypeFile(validDatabasePath, ['admin'])
+
+      // Should start as a single object type
+      expect(result).toContain('export type CollectionToSchemaMap = {')
+      // Should include entries without nested braces after each entry
+      expect(result).toContain('"users": z.infer<typeof databaseSchema.users._schema>,')
+      expect(result).toContain('"posts": z.infer<typeof databaseSchema.posts._schema>,')
+      // Should close properly
+      expect(result).toContain('\n}')
     })
   })
 })

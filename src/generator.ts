@@ -57,9 +57,10 @@ export function generateFiretypeFile(
   }
   walkCollect(combinedTree)
 
-  // Emit constants
+  // Emit constants with processed reference types
   for (const e of entriesList) {
-    generatedFile += `\nconst schema_${e.id} = ${e.schemaCode}`
+    const processed = processSchemaReferences(e.schemaCode, modes)
+    generatedFile += `\nconst schema_${e.id} = ${processed}`
   }
 
   // Build databaseSchema object referencing constants
@@ -80,8 +81,16 @@ export function generateFiretypeFile(
 
   const schemaName = `databaseSchema`
   const schemaTreeForRefs = buildSchemaObject(combinedTree)
-  const processedSchemaTree = processSchemaReferences(schemaTreeForRefs, modes)
-  generatedFile += `\n\nconst ${schemaName} = {${processedSchemaTree}}`
+  generatedFile += `\n\nconst ${schemaName} = {${schemaTreeForRefs}}`
+
+  // Export a map of top-level collection paths for better inference
+  const topLevelCollections = Object.entries(combinedTree)
+    .filter(([, value]) => value && typeof value === "object" && value._schema)
+    .map(([key]) => key)
+  const collectionPathsObject = topLevelCollections
+    .map(k => `${JSON.stringify(k)}: ${JSON.stringify(k)}`)
+    .join(", ")
+  generatedFile += `\n\nexport const CollectionPaths = { ${collectionPathsObject} } as const`
 
   // CollectionPath must be declared after databaseSchema so keyof works
   generatedFile += `\n\nexport type CollectionPath = keyof typeof ${schemaName};`
@@ -93,7 +102,7 @@ export function generateFiretypeFile(
     tree: Record<string, any>,
     segs: string[] = []
   ): string {
-    let out = "{"
+    let out = ""
     for (const [key, value] of Object.entries(tree)) {
       if (key === "_schema") continue
       if (value && typeof value === "object") {
@@ -106,14 +115,13 @@ export function generateFiretypeFile(
         out += generateCollectionToSchemaMap(value, newSegs)
       }
     }
-    out += "\n}"
     return out
   }
 
-  const mapBody = generateCollectionToSchemaMap(combinedTree)
-  generatedFile += `\n\nexport type CollectionToSchemaMap = ${mapBody}`
-  generatedFile += `\nexport type SchemaOf<P extends DatabaseCollectionPaths> = CollectionToSchemaMap[P]`
-  generatedFile += `\nexport type AnyCollectionSchema = CollectionToSchemaMap[DatabaseCollectionPaths]`
+  const mapBodyEntries = generateCollectionToSchemaMap(combinedTree)
+  generatedFile += `\n\nexport type CollectionToSchemaMap = {${mapBodyEntries}\n}`
+  generatedFile += `\nexport type SchemaOf<P extends CollectionPath> = CollectionToSchemaMap[P]`
+  generatedFile += `\nexport type AnyCollectionSchema = CollectionToSchemaMap[CollectionPath]`
 
   // Generate collection paths type for type safety across all databases
   const collectionPaths = generateCollectionPathsType(combinedTree)

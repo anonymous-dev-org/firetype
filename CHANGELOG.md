@@ -1,5 +1,11 @@
 # @anonymous-dev/firetype
 
+## 1.2.5
+
+### Patch Changes
+
+- fix bugs on type generation
+
 ## 1.2.4
 
 ### Patch Changes
