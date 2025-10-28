@@ -52,7 +52,7 @@ export function generateFileSystemTree(
         const content = fs.readFileSync(fullPath, "utf-8")
 
         const match = content.match(
-          /export\s+const\s+\w+\s*=\s*([\s\S]*?)(;|\n\s*export|\n\s*$)/
+          /export\s+const\s+\w+\s*=\s*([\s\S]*)$/
         )
         if (match && match[1]) {
           tree["_schema"] = match[1].trim()
@@ -95,63 +95,53 @@ export function generateConvertersTree(
       if (modes.includes("admin")) {
         convertersStr += `"_adminConverter": (validate: boolean = false) => ({
           toFirestore(
-            data: z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema>
+            data: z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema>
           ): AdminDocumentData {
             const parsed = validate
-              ? ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema.parse(data)
+              ? ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema.parse(data)
               : data
             return parsed as AdminDocumentData
           },
           fromFirestore(
             snapshot: AdminQueryDocumentSnapshot
-          ): z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema> {
+          ): z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema> {
             const data = snapshot.data()!
             const parsed = validate
-              ? ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema.parse(data)
+              ? ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema.parse(data)
               : data
-            return parsed as z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema>
+            return parsed as z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema>
           },
         }),`
       }
       if (modes.includes("client")) {
         convertersStr += `"_clientConverter": (validate: boolean = false) => ({
           toFirestore(
-            data: z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema>
+            data: z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema>
           ): ClientDocumentData {
             const parsed = validate
-              ? ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema.parse(data)
+              ? ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema.parse(data)
               : data
             return parsed as ClientDocumentData
           },
           fromFirestore(
             snapshot: ClientQueryDocumentSnapshot,
             options: ClientSnapshotOptions
-          ): z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema> {
+          ): z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema> {
             const data = snapshot.data(options)!
             const parsed = validate
-              ? ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema.parse(data)
+              ? ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema.parse(data)
               : data
-            return parsed as z.infer<typeof ${schemaName}${
-          schemaPath ? "." + schemaPath : ""
-        }._schema>
+            return parsed as z.infer<typeof ${schemaName}${schemaPath ? "." + schemaPath : ""
+          }._schema>
           },
         }),`
       }
@@ -172,11 +162,9 @@ export function generateCreationFunction(
   tree: Record<string, any>,
   mode: "admin" | "client"
 ) {
-  let creationFunction = `export function createFireType${
-    mode === "admin" ? "Admin" : "Client"
-  }(firestoreInstance: ${
-    mode === "admin" ? "AdminFirestore" : "ClientFirestore"
-  }) {
+  let creationFunction = `export function createFireType${mode === "admin" ? "Admin" : "Client"
+    }(firestoreInstance: ${mode === "admin" ? "AdminFirestore" : "ClientFirestore"
+    }) {
   return {`
 
   function processNode(
@@ -263,8 +251,8 @@ function generateGetDocumentRef(
         const collectionRef = firestoreInstance
           .collection(path)
           .withConverter(databaseConverters${getSchemaPath(
-            path
-          )}._adminConverter(validate))
+      path
+    )}._adminConverter(validate))
         return collectionRef.doc(documentId)
       },`
   } else {
@@ -280,8 +268,8 @@ function generateGetDocumentRef(
           firestoreInstance,
           path
         ).withConverter(databaseConverters${getSchemaPath(
-          path
-        )}._clientConverter(validate))
+      path
+    )}._clientConverter(validate))
         return clientDocument(collectionRef, documentId)
       },`
   }
@@ -318,16 +306,16 @@ function generateGetCollectionRef(
         return firestoreInstance
           .collection(path)
           .withConverter(databaseConverters${getSchemaPath(
-            path
-          )}._adminConverter(validate))
+      path
+    )}._adminConverter(validate))
       },`
   } else {
     return `
       getCollectionRef: (
         ${argsString}validate: boolean = false
       ): ClientCollectionReference<z.infer<typeof databaseSchema${getSchemaPath(
-        path
-      )}._schema>> => {
+      path
+    )}._schema>> => {
         const path = \`${pathWithArgs}\`
         return clientCollection(firestoreInstance, path).withConverter(
           databaseConverters${getSchemaPath(path)}._clientConverter(validate)
@@ -355,16 +343,16 @@ function generateGetCollectionGroupRef(
         return firestoreInstance
           .collectionGroup(path)
           .withConverter(databaseConverters${getSchemaPath(
-            path
-          )}._adminConverter(validate))
+      path
+    )}._adminConverter(validate))
       },`
   } else {
     return `
       getCollectionGroupRef: (
         validate: boolean = false
       ): ClientQuery<z.infer<typeof databaseSchema${getSchemaPath(
-        path
-      )}._schema>> => {
+      path
+    )}._schema>> => {
         const path = \`${lastSegment}\`
         return clientCollectionGroup(firestoreInstance, path).withConverter(
           databaseConverters${getSchemaPath(path)}._clientConverter(validate)

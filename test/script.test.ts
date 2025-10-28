@@ -47,6 +47,44 @@ describe('Script Functions', () => {
 
       fs.rmdirSync(emptyDir)
     })
+
+    it('should handle different schema export formats', () => {
+      // Test schema with semicolon
+      const schemaWithSemicolon = `import { z } from "zod";
+
+export const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+});`
+
+      const match1 = schemaWithSemicolon.match(/export\s+const\s+\w+\s*=\s*([\s\S]*)$/)
+      expect(match1).toBeTruthy()
+      expect(match1![1].trim()).toContain('z.object({')
+
+      // Test schema without semicolon
+      const schemaWithoutSemicolon = `import z from "zod";
+
+export const schema = z.object({
+  title: z.string(),
+  published: z.boolean(),
+})`
+
+      const match2 = schemaWithoutSemicolon.match(/export\s+const\s+\w+\s*=\s*([\s\S]*)$/)
+      expect(match2).toBeTruthy()
+      expect(match2![1].trim()).toContain('z.object({')
+
+      // Test schema with different variable name
+      const schemaDifferentName = `import { z } from "zod";
+
+export const userSchema = z.object({
+  username: z.string(),
+  email: z.string().email(),
+});`
+
+      const match3 = schemaDifferentName.match(/export\s+const\s+\w+\s*=\s*([\s\S]*)$/)
+      expect(match3).toBeTruthy()
+      expect(match3![1].trim()).toContain('z.object({')
+    })
   })
 
   describe('generateSchemaTree', () => {

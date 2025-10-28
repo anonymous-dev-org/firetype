@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from "zod";
 
 export const schema = z.object({
   name: z.string(),
@@ -9,4 +9,4 @@ export const schema = z.object({
     lastLogin: z.date().optional(),
     isVerified: z.boolean(),
   }),
-})
+});
