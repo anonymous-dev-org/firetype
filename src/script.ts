@@ -4,7 +4,7 @@ import * as path from "path"
 
 export function createImportStatements(modes: Array<"admin" | "client">) {
   let importStatements = `import { z } from "zod";
-import { firestoreRef } from "./references.js";\n`
+import { firestoreRef } from "@anonymous-dev/firetype";\n`
 
   // Add imports based on mode
   if (modes.includes("admin")) {
@@ -77,7 +77,15 @@ export function generateFileSystemTree(
  * - "users/posts" -> ".users.posts"
  * - "users/:userId/posts" -> ".users.posts" (strips dynamic segments)
  */
+function normalizeCollectionPath(collectionPath: string): string {
+  if (collectionPath === "default") return "";
+  if (collectionPath.startsWith("default/")) return collectionPath.slice("default/".length);
+  return collectionPath;
+}
+
 function convertCollectionPathToSchemaPath(collectionPath: string): string {
+  // Normalize 'default' database prefix away
+  collectionPath = normalizeCollectionPath(collectionPath);
   // Split by '/' and filter out dynamic segments (starting with ':')
   const segments = collectionPath
     .split('/')
@@ -93,7 +101,7 @@ export function processSchemaReferences(
   // Handle no-arg single references: firestoreRef()
   const refNoArgRegex = /firestoreRef\(\)/g;
   schemaStr = schemaStr.replace(refNoArgRegex, () => {
-    return `z.any()`
+    return `z.string()`
   })
 
   // 3) Handle typed references with explicit collection path
@@ -103,6 +111,7 @@ export function processSchemaReferences(
 
   // First handle array references
   schemaStr = schemaStr.replace(arrayRefRegex, (match, collectionPath) => {
+    collectionPath = normalizeCollectionPath(collectionPath);
     // Convert collection path to schema path, handling dynamic segments
     const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
 
@@ -121,6 +130,7 @@ export function processSchemaReferences(
 
   // Then handle single references
   schemaStr = schemaStr.replace(refRegex, (match, collectionPath) => {
+    collectionPath = normalizeCollectionPath(collectionPath);
     // Convert collection path to schema path, handling dynamic segments
     const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
 

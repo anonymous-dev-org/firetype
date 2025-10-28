@@ -1,14 +1,16 @@
 
 import { z } from "zod";
 
-// Default, augmentable typing hook. The generated file will augment this
-// interface to narrow `CollectionPath` to the literal union of valid paths.
+// Augmentable typing hook. The generated file will add `__CollectionPath`.
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-empty-interface
-  interface FiretypeGenerated {
-    CollectionPath: string
-  }
+  interface FiretypeGenerated { }
 }
+
+// Derive the effective collection path type. Defaults to string until augmented.
+type GeneratedCollectionPath = FiretypeGenerated extends { __CollectionPath: infer T }
+  ? T
+  : string
 
 /**
  * Creates a Zod schema for a Firestore document reference.
@@ -34,14 +36,14 @@ declare global {
  * @note The generated types will include a union type of all valid collection paths for better type safety.
  */
 export function firestoreRef(
-  collectionPath: FiretypeGenerated["CollectionPath"]
-): z.ZodTypeAny
-export function firestoreRef(): z.ZodTypeAny
+  collectionPath: GeneratedCollectionPath
+): any
+export function firestoreRef(): any
 export function firestoreRef(collectionPath?: unknown) {
   // At authoring time we return a permissive Zod schema so this can be composed
   // freely (e.g. z.array(firestoreRef())). During code generation, calls with a
   // concrete collection path are replaced with strongly-typed schemas.
-  return z.any()
+  return z.string()
 }
 
 /**
@@ -57,7 +59,7 @@ export function firestoreRef(collectionPath?: unknown) {
  * const postPath = collectionPath("users/posts");
  * ```
  */
-export function collectionPath<T extends FiretypeGenerated["CollectionPath"]>(
+export function collectionPath<T extends GeneratedCollectionPath>(
   path: T
 ): T {
   return path;

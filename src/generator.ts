@@ -1,11 +1,12 @@
+import fs from "fs"
+import path from "path"
 import {
   createImportStatements,
   generateCollectionPathsType,
   generateConvertersTree,
   generateCreationFunction,
   generateFileSystemTree,
-  generateSchemaTree,
-  processSchemaReferences,
+  processSchemaReferences
 } from "./script"
 
 export function generateFiretypeFile(
@@ -19,13 +20,13 @@ export function generateFiretypeFile(
   // Discover first-level databases inside inputDir
   // Special rule: a database folder named "defualt" is hoisted (no prefix in paths)
   const dbTrees: Record<string, any> = {}
-  const entries = require("fs").readdirSync(inputDir)
+  const entries = fs.readdirSync(inputDir)
   for (const name of entries) {
-    const fullPath = require("path").join(inputDir, name)
-    const stat = require("fs").statSync(fullPath)
+    const fullPath = path.join(inputDir, name)
+    const stat = fs.statSync(fullPath)
     if (stat.isDirectory()) {
       const tree = generateFileSystemTree(fullPath)
-      if (name === "defualt") {
+      if (name === "default") {
         // Hoist collections to root level
         Object.assign(dbTrees, tree)
       } else {
@@ -36,13 +37,56 @@ export function generateFiretypeFile(
 
   const combinedTree = dbTrees
 
-  const schemaTree = generateSchemaTree(combinedTree)
+  // Build per-collection schema constants to avoid self-referential types
+  type ColEntry = { id: string; key: string; path: string[]; schemaCode: string }
+  const entriesList: ColEntry[] = []
+
+  function walkCollect(tree: Record<string, any>, segs: string[] = []) {
+    for (const [key, value] of Object.entries(tree)) {
+      if (key === "_schema") continue
+      if (value && typeof value === "object") {
+        const hasSchema = Boolean(value._schema)
+        const newSegs = [...segs, key]
+        if (hasSchema) {
+          const id = newSegs.join("_")
+          entriesList.push({ id, key, path: newSegs, schemaCode: value._schema })
+        }
+        walkCollect(value, newSegs)
+      }
+    }
+  }
+  walkCollect(combinedTree)
+
+  // Emit constants
+  for (const e of entriesList) {
+    generatedFile += `\nconst schema_${e.id} = ${e.schemaCode}`
+  }
+
+  // Build databaseSchema object referencing constants
+  function buildSchemaObject(tree: Record<string, any>, segs: string[] = []): string {
+    let out = ""
+    for (const [key, value] of Object.entries(tree)) {
+      if (key === "_schema") continue
+      if (value && typeof value === "object") {
+        const newSegs = [...segs, key]
+        const id = newSegs.join("_")
+        const hasSchema = Boolean(value._schema)
+        const nested = buildSchemaObject(value, newSegs)
+        out += `${JSON.stringify(key)}: {${hasSchema ? ` _schema: schema_${id},` : ""}${nested}},`
+      }
+    }
+    return out
+  }
 
   const schemaName = `databaseSchema`
-  const processedSchemaTree = processSchemaReferences(schemaTree, modes)
-  const treeSchemaString = `const ${schemaName} = {${processedSchemaTree}}`
+  const schemaTreeForRefs = buildSchemaObject(combinedTree)
+  const processedSchemaTree = processSchemaReferences(schemaTreeForRefs, modes)
+  generatedFile += `\n\nconst ${schemaName} = {${processedSchemaTree}}`
 
-  generatedFile += treeSchemaString
+  // CollectionPath must be declared after databaseSchema so keyof works
+  generatedFile += `\n\nexport type CollectionPath = keyof typeof ${schemaName};`
+  // Single global typing hook for helpers (use marker property to avoid conflicts)
+  generatedFile += `\n\ndeclare global { interface FiretypeGenerated { __CollectionPath: DatabaseCollectionPaths } }\nexport {}`
 
   // Generate collection paths type for type safety across all databases
   const collectionPaths = generateCollectionPathsType(combinedTree)
@@ -50,11 +94,6 @@ export function generateFiretypeFile(
     ? collectionPaths.map(path => `"${path}"`).join(" | ")
     : '""'
   generatedFile += `\n\nexport type DatabaseCollectionPaths = ${pathsUnion};`
-  // Stable alias so consumers can import a generic name
-  generatedFile += `\nexport type CollectionPath = DatabaseCollectionPaths;`
-
-  // Global typing hook for the library helpers to consume generated paths without direct imports
-  generatedFile += `\n\ndeclare global { interface FiretypeGenerated { CollectionPath: DatabaseCollectionPaths } }\nexport {}`
 
   const convertersTree = generateConvertersTree(
     schemaName,

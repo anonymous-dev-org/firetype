@@ -270,6 +270,13 @@ export const userSchema = z.object({
       expect(result).toContain('z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.users.comments._schema>>>')
     })
 
+    it('should strip leading default/ from collection paths', () => {
+      const schemaStr = 'z.object({ userRef: firestoreRef("default/users") })'
+      const result = processSchemaReferences(schemaStr, ['client'])
+
+      expect(result).toContain('z.custom<ClientDocumentReference<z.infer<typeof databaseSchema.users._schema>>>')
+    })
+
     it('should handle mixed modes by using any', () => {
       const schemaStr = 'z.object({ userRef: firestoreRef("users") })'
       const result = processSchemaReferences(schemaStr, ['admin', 'client'])
@@ -277,11 +284,11 @@ export const userSchema = z.object({
       expect(result).toContain('userRef: z.any()')
     })
 
-    it('should process no-arg firestoreRef() as any (single)', () => {
+    it('should process no-arg firestoreRef() as string (single)', () => {
       const schemaStr = 'z.object({ ref: firestoreRef() })'
       const result = processSchemaReferences(schemaStr, ['admin'])
 
-      expect(result).toContain('ref: z.any()')
+      expect(result).toContain('ref: z.string()')
     })
   })
 
