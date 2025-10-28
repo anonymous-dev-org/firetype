@@ -1,10 +1,12 @@
 import * as path from "path"
 import {
   createImportStatements,
-  generateCreationFunction,
+  generateCollectionPathsType,
   generateConvertersTree,
+  generateCreationFunction,
   generateFileSystemTree,
   generateSchemaTree,
+  processSchemaReferences,
 } from "./script"
 
 export function generateFiretypeFile(
@@ -22,9 +24,17 @@ export function generateFiretypeFile(
   const schemaTree = generateSchemaTree(fileSystemTree)
 
   const schemaName = `${firstDirName}Schema`
-  const treeSchemaString = `const ${schemaName} = {${schemaTree}}`
+  const processedSchemaTree = processSchemaReferences(schemaTree, modes)
+  const treeSchemaString = `const ${schemaName} = {${processedSchemaTree}}`
 
   generatedFile += treeSchemaString
+
+  // Generate collection paths type for type safety
+  const collectionPaths = generateCollectionPathsType(fileSystemTree)
+  const pathsUnion = collectionPaths.length > 0
+    ? collectionPaths.map(path => `"${path}"`).join(" | ")
+    : '""'
+  generatedFile += `\n\nexport type ${firstDirName}CollectionPaths = ${pathsUnion};`
 
   const convertersTree = generateConvertersTree(
     schemaName,

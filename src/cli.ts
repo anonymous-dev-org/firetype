@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { generateFiretypeFile } from "./generator"
-import * as path from "path"
 import * as fs from "fs"
+import * as path from "path"
+import { generateFiretypeFile } from "./generator"
 
 type Command = "generate" | "help"
 type Mode = "admin" | "client"
@@ -77,44 +77,44 @@ async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
 
 async function generate(options: CliOptions) {
   console.log(
-    `                                            
-                      ${YELLOW}-${RESET}                                                     
-                      ${YELLOW}----${RESET}                                                  
-                       ${YELLOW}-----${RESET}                                                
-                       ${YELLOW}-------${RESET}                                              
-                       ${YELLOW}--------${RESET}                                             
-                      ${YELLOW}+---------${RESET}                                            
-                      ${YELLOW}-----------${RESET}                                           
-                     ${YELLOW}+------------${RESET}                                          
-                    ${YELLOW}++------------${RESET}                                          
-                   ${YELLOW}-++------------${RESET}                                          
-                  ${YELLOW}-+++------------${RESET}                                          
-                ${YELLOW}---+++------------${RESET}   ${YELLOW}-${RESET}                                      
-               ${YELLOW}----++++----------${RESET}    ${YELLOW}---${RESET}                                    
-             ${YELLOW}++----++++---------${RESET}    ${YELLOW}-----${RESET}                                   
-            ${YELLOW}++-----++++--------${RESET}    ${YELLOW}--------${RESET}                                 
-          ${ORANGE}#${YELLOW}+++-----+++++------${RESET}    ${YELLOW}----------${RESET}                                
-         ${ORANGE}##${YELLOW}+++-----+++++++--${RESET}    ${YELLOW}++------------${RESET}                              
-        ${ORANGE}##${YELLOW}++++${ORANGE}#${YELLOW}---+++++++++${RESET}    ${YELLOW}++++++----------${RESET}                             
-      ${ORANGE}####${YELLOW}+++++---+++++++++++++++++++++++-------${RESET}                            
-      ${ORANGE}####${YELLOW}++++++-++++++++++++++++++++++++--------${RESET}                           
-     ${ORANGE}######${YELLOW}+++++${ORANGE}##${YELLOW}+++++++++++++++++++++++---------${RESET}                          
-     ${ORANGE}######${YELLOW}++++++${ORANGE}##${YELLOW}+++++++++++++++++++++----------${RESET}                          
-    ${ORANGE}########${YELLOW}+++++${ORANGE}####${YELLOW}+++++++++${ORANGE}#####${YELLOW}++++-----------${RESET}                          
-    ${ORANGE}#########${YELLOW}+++++${ORANGE}#####${YELLOW}++++${ORANGE}#########${YELLOW}+--------------${RESET}                         
-    ${ORANGE}###########${YELLOW}+++${ORANGE}#######${YELLOW}+${ORANGE}#########${YELLOW}+++-------------${RESET}                         
-    ${RED}#############${YELLOW}++${ORANGE}#######${YELLOW}+${ORANGE}#######${YELLOW}+++++------------${RESET}                         
-    ${RED}##############${YELLOW}+${RED}#############${YELLOW}-+++++++----------${RESET}                          
-     ${RED}#########################${YELLOW}-+++++++++-++++++---${RESET}                          
-     ${RED}#######################${YELLOW}--+++++++++++++++++++${RESET}                           
-      ${RED}#####################${YELLOW}-++++++++++++++++++++-${RESET}                           
-       ${RED}###################${YELLOW}#++++++++++++++++++++++${RESET}                            
-        ${RED}###################${YELLOW}++++++++++++++++++++${RESET}                             
-         ${RED}####################${YELLOW}++++++++++++++++${RESET}                               
-           ${RED}##########${YELLOW}+${RED}#########${YELLOW}+++++++++++++${RESET}                                
-             ${RED}#######${YELLOW}+++${RED}#########${YELLOW}++++++#++${RESET}                                   
-                ${RED}####${YELLOW}+++${RED}##########${YELLOW}++###${RESET}                                      
-                     ${RED}#############${RESET}      
+    `
+                      ${YELLOW}-${RESET}
+                      ${YELLOW}----${RESET}
+                       ${YELLOW}-----${RESET}
+                       ${YELLOW}-------${RESET}
+                       ${YELLOW}--------${RESET}
+                      ${YELLOW}+---------${RESET}
+                      ${YELLOW}-----------${RESET}
+                     ${YELLOW}+------------${RESET}
+                    ${YELLOW}++------------${RESET}
+                   ${YELLOW}-++------------${RESET}
+                  ${YELLOW}-+++------------${RESET}
+                ${YELLOW}---+++------------${RESET}   ${YELLOW}-${RESET}
+               ${YELLOW}----++++----------${RESET}    ${YELLOW}---${RESET}
+             ${YELLOW}++----++++---------${RESET}    ${YELLOW}-----${RESET}
+            ${YELLOW}++-----++++--------${RESET}    ${YELLOW}--------${RESET}
+          ${ORANGE}#${YELLOW}+++-----+++++------${RESET}    ${YELLOW}----------${RESET}
+         ${ORANGE}##${YELLOW}+++-----+++++++--${RESET}    ${YELLOW}++------------${RESET}
+        ${ORANGE}##${YELLOW}++++${ORANGE}#${YELLOW}---+++++++++${RESET}    ${YELLOW}++++++----------${RESET}
+      ${ORANGE}####${YELLOW}+++++---+++++++++++++++++++++++-------${RESET}
+      ${ORANGE}####${YELLOW}++++++-++++++++++++++++++++++++--------${RESET}
+     ${ORANGE}######${YELLOW}+++++${ORANGE}##${YELLOW}+++++++++++++++++++++++---------${RESET}
+     ${ORANGE}######${YELLOW}++++++${ORANGE}##${YELLOW}+++++++++++++++++++++----------${RESET}
+    ${ORANGE}########${YELLOW}+++++${ORANGE}####${YELLOW}+++++++++${ORANGE}#####${YELLOW}++++-----------${RESET}
+    ${ORANGE}#########${YELLOW}+++++${ORANGE}#####${YELLOW}++++${ORANGE}#########${YELLOW}+--------------${RESET}
+    ${ORANGE}###########${YELLOW}+++${ORANGE}#######${YELLOW}+${ORANGE}#########${YELLOW}+++-------------${RESET}
+    ${RED}#############${YELLOW}++${ORANGE}#######${YELLOW}+${ORANGE}#######${YELLOW}+++++------------${RESET}
+    ${RED}##############${YELLOW}+${RED}#############${YELLOW}-+++++++----------${RESET}
+     ${RED}#########################${YELLOW}-+++++++++-++++++---${RESET}
+     ${RED}#######################${YELLOW}--+++++++++++++++++++${RESET}
+      ${RED}#####################${YELLOW}-++++++++++++++++++++-${RESET}
+       ${RED}###################${YELLOW}#++++++++++++++++++++++${RESET}
+        ${RED}###################${YELLOW}++++++++++++++++++++${RESET}
+         ${RED}####################${YELLOW}++++++++++++++++${RESET}
+           ${RED}##########${YELLOW}+${RED}#########${YELLOW}+++++++++++++${RESET}
+             ${RED}#######${YELLOW}+++${RED}#########${YELLOW}++++++#++${RESET}
+                ${RED}####${YELLOW}+++${RED}##########${YELLOW}++###${RESET}
+                     ${RED}#############${RESET}
 `
   )
 
@@ -138,16 +138,16 @@ async function generate(options: CliOptions) {
       )
     }
 
-    const firstDir = fs
-      .readdirSync(startPath)
-      .map(name => path.join(startPath, name))
-      .filter(filePath => fs.statSync(filePath).isDirectory())[0]
-
-    if (!firstDir) {
-      throw new Error(`No directories found in the input folder: ${startPath}`)
+    // Check if startPath exists and is a directory
+    if (!fs.existsSync(startPath)) {
+      throw new Error(`Input path does not exist: ${startPath}`)
     }
 
-    const generatedFile = generateFiretypeFile(firstDir, modes)
+    if (!fs.statSync(startPath).isDirectory()) {
+      throw new Error(`Input path is not a directory: ${startPath}`)
+    }
+
+    const generatedFile = generateFiretypeFile(startPath, modes)
     const targetPath = path.join(outputPath, "index.ts")
     const targetDir = path.dirname(targetPath)
 

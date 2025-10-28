@@ -1,11 +1,12 @@
 import z from "zod";
+import { firestoreRef } from "../../../../src/references";
 
 export const schema = z.object({
   available_seats: z.number().int().nonnegative(),
   booked_seats: z.number().int().nonnegative(),
   booked_users: z.array(z.any()).default([]),
 
-  centerRef: z.any(),
+  centerRef: firestoreRef("centers"),
   center_images: z.array(z.string()).default([]),
   center_name: z.string(),
   city: z.string(),

@@ -1,8 +1,10 @@
 import * as fs from "fs"
 import * as path from "path"
 
+
 export function createImportStatements(modes: Array<"admin" | "client">) {
-  let importStatements = `import { z } from "zod";\n`
+  let importStatements = `import { z } from "zod";
+import { firestoreRef } from "./references.js";\n`
 
   // Add imports based on mode
   if (modes.includes("admin")) {
@@ -68,6 +70,69 @@ export function generateFileSystemTree(
   return tree
 }
 
+/**
+ * Converts a collection path to a schema path, handling dynamic segments.
+ * Examples:
+ * - "users" -> ".users"
+ * - "users/posts" -> ".users.posts"
+ * - "users/:userId/posts" -> ".users.posts" (strips dynamic segments)
+ */
+function convertCollectionPathToSchemaPath(collectionPath: string): string {
+  // Split by '/' and filter out dynamic segments (starting with ':')
+  const segments = collectionPath
+    .split('/')
+    .filter(segment => !segment.startsWith(':') && segment.length > 0);
+
+  return segments.length > 0 ? '.' + segments.join('.') : '';
+}
+
+export function processSchemaReferences(
+  schemaStr: string,
+  modes: Array<"admin" | "client">
+): string {
+  // Replace firestoreRef("collectionPath") with appropriate DocumentReference type
+  const refRegex = /firestoreRef\("([^"]+)"\)/g;
+  const arrayRefRegex = /firestoreRef\("([^"]+)"\)\.array\(\)/g;
+
+  // First handle array references
+  schemaStr = schemaStr.replace(arrayRefRegex, (match, collectionPath) => {
+    // Convert collection path to schema path, handling dynamic segments
+    const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
+
+    if (modes.length === 1) {
+      if (modes.includes("admin")) {
+        return `z.array(z.custom<AdminDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>())`;
+      } else {
+        return `z.array(z.custom<ClientDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>())`;
+      }
+    } else {
+      // When both modes are enabled, use a union type or fallback to any
+      // This is a complex case - for now, use any since the converters handle the typing
+      return `z.array(z.any())`;
+    }
+  });
+
+  // Then handle single references
+  schemaStr = schemaStr.replace(refRegex, (match, collectionPath) => {
+    // Convert collection path to schema path, handling dynamic segments
+    const schemaPath = convertCollectionPathToSchemaPath(collectionPath);
+
+    if (modes.length === 1) {
+      if (modes.includes("admin")) {
+        return `z.custom<AdminDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>()`;
+      } else {
+        return `z.custom<ClientDocumentReference<z.infer<typeof databaseSchema${schemaPath}._schema>>>()`;
+      }
+    } else {
+      // When both modes are enabled, use a union type or fallback to any
+      // This is a complex case - for now, use any since the converters handle the typing
+      return `z.any()`;
+    }
+  });
+
+  return schemaStr;
+}
+
 export function generateSchemaTree(systemTree: Record<string, any>): string {
   let schemaStr = ""
 
@@ -79,6 +144,22 @@ export function generateSchemaTree(systemTree: Record<string, any>): string {
     }
   }
   return schemaStr
+}
+
+export function generateCollectionPathsType(tree: Record<string, any>, parents: Array<string> = []): string[] {
+  const paths: string[] = [];
+
+  for (const [key, value] of Object.entries(tree)) {
+    if (key === "_schema") {
+      // This is a collection with a schema
+      paths.push(parents.join("/"));
+    } else if (typeof value === "object" && value !== null) {
+      // This is a nested collection
+      paths.push(...generateCollectionPathsType(value, [...parents, key]));
+    }
+  }
+
+  return paths;
 }
 
 export function generateConvertersTree(

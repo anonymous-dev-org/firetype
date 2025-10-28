@@ -7,6 +7,7 @@ import {
   generateCreationFunction,
   generateFileSystemTree,
   generateSchemaTree,
+  processSchemaReferences,
 } from '../src/script'
 
 describe('Script Functions', () => {
@@ -235,6 +236,45 @@ export const userSchema = z.object({
       // Should include usersId parameter for nested comments collection
       expect(creationFunction).toContain('usersId: string')
       expect(creationFunction).toContain('${args.usersId}')
+    })
+  })
+
+  describe('processSchemaReferences', () => {
+    it('should process firestoreRef calls for admin mode', () => {
+      const schemaStr = 'z.object({ userRef: firestoreRef("users"), postsRef: firestoreRef("posts").array() })'
+      const result = processSchemaReferences(schemaStr, ['admin'])
+
+      expect(result).toContain('z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.users._schema>>>')
+      expect(result).toContain('z.array(z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.posts._schema>>>())')
+    })
+
+    it('should process firestoreRef calls for client mode', () => {
+      const schemaStr = 'z.object({ userRef: firestoreRef("users") })'
+      const result = processSchemaReferences(schemaStr, ['client'])
+
+      expect(result).toContain('z.custom<ClientDocumentReference<z.infer<typeof databaseSchema.users._schema>>>')
+    })
+
+    it('should handle paths with dynamic segments', () => {
+      const schemaStr = 'z.object({ dynamicRef: firestoreRef("users/:userId/posts") })'
+      const result = processSchemaReferences(schemaStr, ['admin'])
+
+      // Should convert "users/:userId/posts" to ".users.posts" (filtering out :userId)
+      expect(result).toContain('z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.users.posts._schema>>>')
+    })
+
+    it('should handle nested collection paths', () => {
+      const schemaStr = 'z.object({ commentRef: firestoreRef("users/comments") })'
+      const result = processSchemaReferences(schemaStr, ['admin'])
+
+      expect(result).toContain('z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.users.comments._schema>>>')
+    })
+
+    it('should handle mixed modes by using any', () => {
+      const schemaStr = 'z.object({ userRef: firestoreRef("users") })'
+      const result = processSchemaReferences(schemaStr, ['admin', 'client'])
+
+      expect(result).toContain('userRef: z.any()')
     })
   })
 

@@ -1,5 +1,11 @@
 # @anonymous-dev/firetype
 
+## 1.2.0
+
+### Minor Changes
+
+- add reference field support
+
 ## 1.1.0
 
 ### Minor Changes

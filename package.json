@@ -1,6 +1,6 @@
 {
   "name": "@anonymous-dev/firetype",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Typesafe ODM for Firestore",
   "author": "anonymous.dev",
   "license": "MIT",
@@ -38,6 +38,17 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./references": {
+      "types": "./dist/references.d.ts",
+      "import": "./dist/references.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
   "bin": {
     "firetype": "dist/cli.js"
   }

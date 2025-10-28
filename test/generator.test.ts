@@ -118,6 +118,60 @@ describe('Generator', () => {
       // Should use 'database' as the prefix for schema and converters
       expect(result).toContain('const databaseSchema = {')
       expect(result).toContain('const databaseConverters = {')
+
+      // Should also generate collection paths type
+      expect(result).toContain('export type databaseCollectionPaths = ')
+    })
+
+    it('should handle firestore reference types', () => {
+      const result = generateFiretypeFile(validDatabasePath, ['admin'])
+
+      // Should contain the firestoreRef import
+      expect(result).toContain('import { firestoreRef } from "./references.js"')
+
+      // Should replace FIRESTORE_REF_PLACEHOLDER with proper DocumentReference types
+      expect(result).toContain('AdminDocumentReference<z.infer<typeof databaseSchema.users._schema>>')
+      expect(result).toContain('AdminDocumentReference<z.infer<typeof databaseSchema.centers._schema>>')
+
+      // Should handle array references
+      expect(result).toContain('z.array(z.custom<AdminDocumentReference<z.infer<typeof databaseSchema.users._schema>>>())')
+    })
+
+    it('should handle firestore reference types for client SDK', () => {
+      const result = generateFiretypeFile(validDatabasePath, ['client'])
+
+      // Should replace FIRESTORE_REF_PLACEHOLDER with proper DocumentReference types for client
+      expect(result).toContain('ClientDocumentReference<z.infer<typeof databaseSchema.users._schema>>')
+      expect(result).toContain('ClientDocumentReference<z.infer<typeof databaseSchema.centers._schema>>')
+
+      // Should handle array references
+      expect(result).toContain('z.array(z.custom<ClientDocumentReference<z.infer<typeof databaseSchema.users._schema>>>())')
+    })
+
+    it('should handle both admin and client reference types', () => {
+      const result = generateFiretypeFile(validDatabasePath, ['admin', 'client'])
+
+      // When both modes are enabled, references use z.any() since typing is handled by converters
+      expect(result).toContain('centerRef: z.any()')
+      expect(result).toContain('authorRef: z.any()')
+      expect(result).toContain('collaboratorRefs: z.array(z.any())')
+
+      // But both converter types should be generated
+      expect(result).toContain('_adminConverter')
+      expect(result).toContain('_clientConverter')
+    })
+
+    it('should generate collection paths type for type safety', () => {
+      const result = generateFiretypeFile(validDatabasePath, ['admin'])
+
+      // Should generate a union type of all valid collection paths
+      expect(result).toContain('export type databaseCollectionPaths = ')
+      expect(result).toContain('"accounts"')
+      expect(result).toContain('"centers"')
+      expect(result).toContain('"matches"')
+      expect(result).toContain('"posts"')
+      expect(result).toContain('"users"')
+      expect(result).toContain('"users/comments"')
     })
   })
 })

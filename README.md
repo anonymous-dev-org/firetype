@@ -357,6 +357,108 @@ export const schema = z.discriminatedUnion("type", [
 ])
 ```
 
+#### Firestore References
+
+Firetype supports strongly-typed Firestore document references using the `firestoreRef` helper:
+
+```typescript
+// schemas/database/posts/schema.ts
+import { z } from "zod"
+import { firestoreRef, collectionPath } from "@anonymous-dev/firetype"
+
+export const schema = z.object({
+  title: z.string().min(1, "Title is required"),
+  content: z.string().min(1, "Content is required"),
+  authorId: z.string(),
+
+  // Single reference to a user document
+  authorRef: firestoreRef("users"),
+
+  // Array of references to user documents
+  collaboratorRefs: firestoreRef("users").array(),
+
+  // Reference to a different collection
+  categoryRef: firestoreRef("categories"),
+
+  // Reference to subcollections
+  commentRef: firestoreRef("users/comments"),
+
+  // Using branded collection paths for better type safety
+  centerRef: firestoreRef(collectionPath("centers")),
+
+  publishedAt: z.date(),
+  tags: z.array(z.string()).default([]),
+  isPublished: z.boolean().default(false),
+})
+```
+
+You can use dynamic path segments for documentation purposes:
+
+```typescript
+export const schema = z.object({
+  // Path with dynamic segment (for documentation)
+  userPostRef: firestoreRef("users/:userId/posts"),
+
+  // This resolves to the same type as firestoreRef("users/posts")
+  // The :userId segment is filtered out during processing
+})
+```
+
+References automatically resolve to properly typed `DocumentReference` objects:
+
+```typescript
+// Server-side (Admin SDK)
+const firetype = createFireTypeAdmin(db)
+const post = await firetype.posts.getDocumentRef("post123").get()
+const postData = post.data()
+// postData.authorRef is typed as AdminDocumentReference<UserSchema>
+// postData.collaboratorRefs is typed as AdminDocumentReference<UserSchema>[]
+// postData.commentRef is typed as AdminDocumentReference<CommentSchema>
+
+// Client-side (Web SDK)
+const firetype = createFireTypeClient(db)
+const post = await firetype.posts.getDocumentRef("post123").get()
+const postData = post.data()
+// postData.authorRef is typed as ClientDocumentReference<UserSchema>
+// postData.collaboratorRefs is typed as ClientDocumentReference<UserSchema>[]
+// postData.commentRef is typed as ClientDocumentReference<CommentSchema>
+```
+
+The generated types also include a union type of all valid collection paths for better development experience:
+
+```typescript
+// Generated type for type safety
+export type DatabaseCollectionPaths =
+  | "accounts"
+  | "centers"
+  | "matches"
+  | "posts"
+  | "users"
+  | "users/comments"
+```
+
+#### Collection Path Types
+
+For better type safety, you can use the `CollectionPath` type and `collectionPath` helper:
+
+```typescript
+import {
+  firestoreRef,
+  collectionPath,
+  type CollectionPath,
+} from "@anonymous-dev/firetype"
+
+// Create branded collection paths
+const userPath: CollectionPath = collectionPath("users")
+const postPath: CollectionPath = collectionPath("users/posts")
+
+// Use with firestoreRef
+const schema = z.object({
+  userRef: firestoreRef(userPath),
+  postRef: firestoreRef(postPath),
+})
+```
+
 #### Complex Validation
 
 ```typescript
@@ -410,6 +512,9 @@ export const schema = z
 - **Add validation**: Leverage Zod's validation features to ensure data integrity
 - **Use enums**: For fields with a fixed set of values, use `z.enum()` instead of strings
 - **Default values**: Provide sensible defaults for optional fields
+- **Firestore references**: Use `firestoreRef()` for strongly-typed document references
+- **Collection paths**: Use `collectionPath()` helper for better type safety with references
+- **Dynamic path segments**: Use `:param` syntax in paths for documentation (e.g., `"users/:userId/posts"`)
 - **Type references**: Use TypeScript types when referencing other document IDs
 - **Custom validation**: Add business logic validation using Zod's `.refine()` method
 - **Keep it DRY**: Extract common schema parts into reusable constants
