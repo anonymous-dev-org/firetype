@@ -35,6 +35,8 @@ export function generateFiretypeFile(
     ? collectionPaths.map(path => `"${path}"`).join(" | ")
     : '""'
   generatedFile += `\n\nexport type ${firstDirName}CollectionPaths = ${pathsUnion};`
+  // Stable alias so consumers don't need to know the folder name
+  generatedFile += `\nexport type CollectionPath = ${firstDirName}CollectionPaths;`
 
   const convertersTree = generateConvertersTree(
     schemaName,

@@ -1,9 +1,11 @@
 
+import { z } from "zod";
+
 /**
  * Creates a Zod schema for a Firestore document reference.
  * This should be used in your schema definitions to type Firestore references.
  *
- * @param collectionPath - The path to the referenced collection. Use paths that correspond to your schema structure (e.g., "users", "users/posts")
+ * @param collectionPath - OPTIONAL path to the referenced collection. Use paths that correspond to your schema structure (e.g., "users", "users/posts"). When omitted, a generic reference schema will be returned.
  * @returns A Zod schema that validates Firestore document references
  *
  * @example
@@ -14,16 +16,19 @@
  * export const schema = z.object({
  *   authorRef: firestoreRef("users"),
  *   postRefs: firestoreRef("posts").array(),
+ *   anyRef: firestoreRef(),
+ *   anyRefs: z.array(firestoreRef()),
  *   userPostRef: firestoreRef("users/posts"), // Reference to posts in users subcollection
  * });
  * ```
  *
  * @note The generated types will include a union type of all valid collection paths for better type safety.
  */
-export function firestoreRef(collectionPath: string) {
-  // This is a placeholder that will be replaced by the generator
-  // The generator will replace firestoreRef("path") with the appropriate DocumentReference type
-  return `FIRESTORE_REF_PLACEHOLDER_${collectionPath}`;
+export function firestoreRef(collectionPath?: string) {
+  // At authoring time we return a permissive Zod schema so this can be composed
+  // freely (e.g. z.array(firestoreRef())). During code generation, calls with a
+  // concrete collection path are replaced with strongly-typed schemas.
+  return z.any()
 }
 
 /**
@@ -39,6 +44,6 @@ export function firestoreRef(collectionPath: string) {
  * const postPath = collectionPath("users/posts");
  * ```
  */
-export function collectionPath(path: string): string {
+export function collectionPath<T extends string>(path: T): T {
   return path;
 }

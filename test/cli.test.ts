@@ -42,24 +42,20 @@ describe('CLI Functions', () => {
     // We'll need to extract the parseArgs function for testing
     // For now, let's create a mock implementation and test the logic
 
-    it('should parse generate command with input and output', () => {
-      const args = ['generate', '--input=./src/schemas', '--output=./src/types']
+    it('should parse generate command with input', () => {
+      const args = ['generate', '--input=./src/schemas']
 
-      // Simulate the parsing logic from the CLI
       const commandArg = args.find(arg => !arg.startsWith("--")) || "help"
       const options: any = {}
 
       args.forEach(arg => {
         if (arg.startsWith("--input=")) {
           options.startPath = arg.slice("--input=".length)
-        } else if (arg.startsWith("--output=")) {
-          options.outputPath = arg.slice("--output=".length)
         }
       })
 
       expect(commandArg).toBe('generate')
       expect(options.startPath).toBe('./src/schemas')
-      expect(options.outputPath).toBe('./src/types')
     })
 
     it('should parse mode arguments', () => {
@@ -79,49 +75,15 @@ describe('CLI Functions', () => {
       expect(options.mode).toBe('admin')
     })
 
-    it('should parse path shorthand', () => {
-      const args = ['generate', '--path=./schemas']
+    // path shorthand is no longer supported
 
+    it('should require input for generate command', () => {
+      const args = ['generate']
       const options: any = {}
+      const hasInput = args.some(arg => arg.startsWith("--input="))
 
-      args.forEach(arg => {
-        if (arg.startsWith("--path=")) {
-          const pathValue = arg.slice("--path=".length)
-          options.startPath = options.startPath || pathValue
-          options.outputPath = options.outputPath || pathValue
-        }
-      })
-
-      expect(options.startPath).toBe('./schemas')
-      expect(options.outputPath).toBe('./schemas')
-    })
-
-    it('should require input and output for generate command', () => {
-      // Test missing input
-      let args = ['generate', '--output=./output']
-      let options: any = {}
-
-      args.forEach(arg => {
-        if (arg.startsWith("--output=")) {
-          options.outputPath = arg.slice("--output=".length)
-        }
-      })
-
+      expect(hasInput).toBe(false)
       expect(options.startPath).toBeUndefined()
-      expect(options.outputPath).toBe('./output')
-
-      // Test missing output
-      args = ['generate', '--input=./input']
-      options = {}
-
-      args.forEach(arg => {
-        if (arg.startsWith("--input=")) {
-          options.startPath = arg.slice("--input=".length)
-        }
-      })
-
-      expect(options.startPath).toBe('./input')
-      expect(options.outputPath).toBeUndefined()
     })
 
     it('should handle help command', () => {
@@ -133,11 +95,10 @@ describe('CLI Functions', () => {
   })
 
   describe('File System Operations', () => {
-    it('should create output directory if it does not exist', () => {
+    it('should create directory if it does not exist', () => {
       mockFs.existsSync.mockReturnValueOnce(false)
 
-      // Simulate the generate function logic
-      const outputPath = './output'
+      const outputPath = './input'
       const targetPath = path.join(outputPath, 'index.ts')
       const targetDir = path.dirname(targetPath)
 
@@ -148,20 +109,7 @@ describe('CLI Functions', () => {
       expect(mockFs.mkdirSync).toHaveBeenCalledWith(targetDir, { recursive: true })
     })
 
-    it('should throw error if output path exists but is not a directory', () => {
-      mockFs.existsSync.mockReturnValueOnce(true)
-      mockFs.statSync.mockReturnValueOnce({
-        isDirectory: () => false
-      })
-
-      const outputPath = './output'
-
-      expect(() => {
-        if (mockFs.existsSync(outputPath) && !mockFs.statSync(outputPath).isDirectory()) {
-          throw new Error(`Provided output path '${outputPath}' exists but is not a directory.`)
-        }
-      }).toThrow('Provided output path \'./output\' exists but is not a directory.')
-    })
+    // no separate output path checks anymore
 
     it('should find first directory in input path', () => {
       const startPath = './input'
@@ -172,10 +120,10 @@ describe('CLI Functions', () => {
       expect(firstDir).toBe(path.join(startPath, 'users'))
     })
 
-    it('should write generated file to correct location', () => {
-      const outputPath = './output'
+    it('should write generated file to input directory', () => {
+      const inputPath = './input'
       const generatedFile = '// Generated content'
-      const targetPath = path.join(outputPath, 'index.ts')
+      const targetPath = path.join(inputPath, 'index.ts')
 
       mockFs.writeFileSync(targetPath, generatedFile)
 

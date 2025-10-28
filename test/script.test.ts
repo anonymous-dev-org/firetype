@@ -276,6 +276,13 @@ export const userSchema = z.object({
 
       expect(result).toContain('userRef: z.any()')
     })
+
+    it('should process no-arg firestoreRef() as any (single)', () => {
+      const schemaStr = 'z.object({ ref: firestoreRef() })'
+      const result = processSchemaReferences(schemaStr, ['admin'])
+
+      expect(result).toContain('ref: z.any()')
+    })
   })
 
   describe('createImportStatements', () => {

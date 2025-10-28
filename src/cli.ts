@@ -9,15 +9,11 @@ type Mode = "admin" | "client"
 
 interface CliOptions {
   mode?: Mode
-  path?: string
   startPath: string
-  outputPath: string
 }
 
 const MODE_ARG = "--mode="
 const INPUT_ARG = "--input="
-const OUTPUT_ARG = "--output="
-const PATH_ARG = "--path="
 
 const YELLOW = "\x1b[33m"
 const ORANGE = "\x1b[38;2;255;165;0m" // Custom RGB for ORANGE
@@ -36,33 +32,16 @@ async function parseArgs(): Promise<{ command: Command; options: CliOptions }> {
       if (modeValue === "admin" || modeValue === "client") {
         options.mode = modeValue as Mode
       }
-    } else if (arg.startsWith(PATH_ARG)) {
-      options.path = arg.slice(PATH_ARG.length)
     } else if (arg.startsWith(INPUT_ARG)) {
       options.startPath = arg.slice(INPUT_ARG.length)
-    } else if (arg.startsWith(OUTPUT_ARG)) {
-      options.outputPath = arg.slice(OUTPUT_ARG.length)
     }
   })
 
-  // For the generate command, both input and output paths are requiRED
+  // For the generate command, input path is required; output is the same path
   if (commandArg === "generate") {
-    // If path is provided, use it for both startPath and outputPath
-    if (options.path) {
-      options.startPath = options.startPath || options.path
-      options.outputPath = options.outputPath || options.path
-    }
-
     if (!options.startPath) {
       console.error(
-        "Error: Either --input or --path parameter is requiRED for the generate command"
-      )
-      showHelp()
-      process.exit(1)
-    }
-    if (!options.outputPath) {
-      console.error(
-        "Error: Either --output or --path parameter is requiRED for the generate command"
+        "Error: --input parameter is required for the generate command"
       )
       showHelp()
       process.exit(1)
@@ -126,18 +105,9 @@ async function generate(options: CliOptions) {
   }
 
   const startPath = path.resolve(process.cwd(), options.startPath)
-  const outputPath = path.resolve(process.cwd(), options.outputPath)
+  const outputPath = startPath
 
   try {
-    // Ensure the output directory exists
-    if (!fs.existsSync(outputPath)) {
-      fs.mkdirSync(outputPath, { recursive: true })
-    } else if (!fs.statSync(outputPath).isDirectory()) {
-      throw new Error(
-        `Provided output path '${options.outputPath}' exists but is not a directory.`
-      )
-    }
-
     // Check if startPath exists and is a directory
     if (!fs.existsSync(startPath)) {
       throw new Error(`Input path does not exist: ${startPath}`)
@@ -151,7 +121,7 @@ async function generate(options: CliOptions) {
     const targetPath = path.join(outputPath, "index.ts")
     const targetDir = path.dirname(targetPath)
 
-    // Ensure the output directory exists
+    // Ensure the directory exists
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true })
     }
@@ -176,16 +146,12 @@ Commands:
 
 Options:
   --mode=<admin|client>   Generate only admin or client types. Defaults to generating both if not provided.
-  --path=<path>           Shorthand to set both input and output paths to the same directory.
-  --input=<path>          Input directory containing the Firestore schema structure. RequiRED if --path is not provided.
-  --output=<path>         Output directory for the generated TypeScript file. RequiRED if --path is not provided.
+  --input=<path>          Input directory containing the Firestore schema structure. Output will be placed here.
 
 Examples:
   firetype help
-  firetype generate --input=/path/to/schema --output=/path/to/output
-  firetype generate --path=/path/to/dir
-  firetype generate --mode=admin --input=/path/to/schema --output=/path/to/output
-  firetype generate --mode=client --path=/path/to/dir
+  firetype generate --input=/path/to/schema
+  firetype generate --mode=admin --input=/path/to/schema
 `)
 }
 
@@ -197,18 +163,9 @@ async function main() {
       case "generate":
         await generate(options)
 
-        let outputLocation = ""
-        if (options.path) {
-          outputLocation = options.path
-        } else {
-          if (options.startPath)
-            outputLocation += `input: ${options.startPath} `
-          if (options.outputPath)
-            outputLocation += `output: ${options.outputPath}`
-        }
-
+        const startPath = path.resolve(process.cwd(), options.startPath)
         console.log(
-          `${ORANGE}Generated Firetype schema at ${RESET}${outputLocation}`
+          `${ORANGE}Generated Firetype schema at ${RESET}${startPath}`
         )
         break
       case "help":

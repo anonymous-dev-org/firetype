@@ -90,6 +90,13 @@ export function processSchemaReferences(
   schemaStr: string,
   modes: Array<"admin" | "client">
 ): string {
+  // Handle no-arg single references: firestoreRef()
+  const refNoArgRegex = /firestoreRef\(\)/g;
+  schemaStr = schemaStr.replace(refNoArgRegex, () => {
+    return `z.any()`
+  })
+
+  // 3) Handle typed references with explicit collection path
   // Replace firestoreRef("collectionPath") with appropriate DocumentReference type
   const refRegex = /firestoreRef\("([^"]+)"\)/g;
   const arrayRefRegex = /firestoreRef\("([^"]+)"\)\.array\(\)/g;
