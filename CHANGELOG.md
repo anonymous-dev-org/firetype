@@ -1,5 +1,11 @@
 # @anonymous-dev/firetype
 
+## 1.2.4
+
+### Patch Changes
+
+- add schema type export util
+
 ## 1.2.3
 
 ### Patch Changes

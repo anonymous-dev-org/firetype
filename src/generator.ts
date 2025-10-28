@@ -88,6 +88,33 @@ export function generateFiretypeFile(
   // Single global typing hook for helpers (use marker property to avoid conflicts)
   generatedFile += `\n\ndeclare global { interface FiretypeGenerated { __CollectionPath: DatabaseCollectionPaths } }\nexport {}`
 
+  // Utility: Map collection paths to their inferred schema types
+  function generateCollectionToSchemaMap(
+    tree: Record<string, any>,
+    segs: string[] = []
+  ): string {
+    let out = "{"
+    for (const [key, value] of Object.entries(tree)) {
+      if (key === "_schema") continue
+      if (value && typeof value === "object") {
+        const newSegs = [...segs, key]
+        const pathString = newSegs.join("/")
+        const schemaPath = newSegs.map(s => `.${s}`).join("")
+        if (value._schema) {
+          out += `\n  ${JSON.stringify(pathString)}: z.infer<typeof ${schemaName}${schemaPath}._schema>,`
+        }
+        out += generateCollectionToSchemaMap(value, newSegs)
+      }
+    }
+    out += "\n}"
+    return out
+  }
+
+  const mapBody = generateCollectionToSchemaMap(combinedTree)
+  generatedFile += `\n\nexport type CollectionToSchemaMap = ${mapBody}`
+  generatedFile += `\nexport type SchemaOf<P extends DatabaseCollectionPaths> = CollectionToSchemaMap[P]`
+  generatedFile += `\nexport type AnyCollectionSchema = CollectionToSchemaMap[DatabaseCollectionPaths]`
+
   // Generate collection paths type for type safety across all databases
   const collectionPaths = generateCollectionPathsType(combinedTree)
   const pathsUnion = collectionPaths.length > 0
