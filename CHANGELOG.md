@@ -1,5 +1,17 @@
 # @anonymous-dev/firetype
 
+## 1.2.2
+
+### Patch Changes
+
+- improve types on multiple databases
+
+## 1.2.1
+
+### Patch Changes
+
+- typesafe docRef field
+
 ## 1.2.0
 
 ### Minor Changes
